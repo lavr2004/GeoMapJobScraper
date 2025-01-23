@@ -1,8 +1,11 @@
-import sqlite3  # или используйте другой драйвер для вашей базы данных
+import sqlite3 
 import os
 from geopy.distance import geodesic
 
-MAX_DISTANCE_AROUND_AREA_KM = 10
+FOLDERNAME_RESULTS_ALL = "data_results"
+FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+
+MAX_DISTANCE_AROUND_AREA_KM = 20
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
 MAX_COUNT_OF_JOBS_FILTERED = 1000
 
@@ -28,7 +31,7 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 
 
 # Подключаемся к базе данных
-conn = sqlite3.connect('jobs.db')
+conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
@@ -160,7 +163,7 @@ def getcode_map_full2(vacancies):
         <span id="salary-value">0 PLN</span>
         <br>
         <label class="slider-label" for="radius-slider">Search Radius (km):</label>
-        <input id="radius-slider" class="slider" type="range" min="1" max="50" step="1" value="10">
+        <input id="radius-slider" class="slider" type="range" min="1" max="''' + str(MAX_DISTANCE_AROUND_AREA_KM) + '''" step="1" value="10">
         <span id="radius-value">''' + str(MAX_DISTANCE_AROUND_AREA_KM) + ''' km</span>
     </div>
 
@@ -338,7 +341,7 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-html_file_path = 'vacancies_map.html'
+html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 

@@ -2,14 +2,29 @@ import requests
 import sqlite3
 import json
 import os
+import time
 from datetime import datetime
 
 from urllib.parse import unquote, urlparse, parse_qs, quote
 
+#SETTINGS
 COUNT_OF_JOBS_TO_REQUEST = 500
+IS_USE_PUBLIC_NOMINATIM_API = False
 
-# Константы
-DATABASE_FILE = "jobs.db"
+# Константы FILESYSTEM
+FOLDERNAME_RESULTS_ALL = "data_results"
+FOLDERNAME_DAILYDATA = "daily_results"
+
+FOLDERPATH_RESULTS_ALL = os.path.join(os.getcwd(), FOLDERNAME_RESULTS_ALL)
+FOLDERPATH_DAILYDATA = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_DAILYDATA)
+
+os.makedirs(FOLDERPATH_RESULTS_ALL, exist_ok=True)
+os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+
+DATABASE_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+#DATABASE_FILEPATH = "test.sqlite"
+
+
 API_URL = f"https://oferty.praca.gov.pl/portal-api/v3/oferta/wyszukiwanie?page=0&size={COUNT_OF_JOBS_TO_REQUEST}&sort=dataDodania,desc"
 HEADERS = {
     "Accept": "*/*",
@@ -21,12 +36,16 @@ DATA = {
     "kodJezyka": "PL",
     "kodyPocztoweId": ["01-107"],
 }
-NOMINATIM_URL = "http://localhost:8080/search"  # Укажите адрес вашего локального сервера Nominatim
+
+NOMINATIM_PRIVATE_API_URL = "http://localhost:8080/search"
+NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
+NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
+NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
 
 
 # Функция для создания базы данных
 def create_database():
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
@@ -84,50 +103,62 @@ def create_database():
 
 # Функция для вызова Nominatim
 def fetch_geolocation(job):
-    url = job.get("mapaGoogleUrl", "")
-    if not url:
-        url = job.get("mapaOsmUrl", "")
+    def get_value_torequestfromnominatim(job):
+        url = job.get("mapaGoogleUrl", "")
         if not url:
+            url = job.get("mapaOsmUrl", "")
+            if not url:
+                return None
+
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        if 'query' not in query_params and "q" not in query_params:
+            #address = job("miejscePracy","Warsazawa, Polska")
             return None
+            print(f"Адрес не извлечен из ссылки, но предустановлен")
+        else:
+            address_raw = unquote(query_params['q'][0])  # Декодируем адрес из URL
+            print(f"Извлеченный адрес: {address_raw}")
+            if address_raw:
+                # Декодируем URL-кодирование
+
+                # Удаляем запятые
+                cleaned_string = address_raw.replace(",", "")
+
+                # Разделяем на слова
+                words = cleaned_string.split()
+
+                # Оставляем только последние вхождения слов
+                unique_words = {}
+                for i, word in enumerate(words):
+                    unique_words[word] = i  # Сохраняем индекс последнего вхождения
+
+                # Сортируем слова по их индексу появления и формируем результат
+                address_unquote = " ".join(sorted(unique_words, key=unique_words.get))
+                # address_quote = quote(address_unquote, safe="")
+                return address_unquote
+
     
-    parsed_url = urlparse(url)
-    query_params = parse_qs(parsed_url.query)
-    if 'query' not in query_params and "q" not in query_params:
-        #address = job("miejscePracy","Warsazawa, Polska")
+    addresstorequest_unquote = get_value_torequestfromnominatim(job)
+    if not addresstorequest_unquote:
         return None
-        print(f"Адрес не извлечен из ссылки, но предустановлен")
-    else:
-        address_raw = unquote(query_params['q'][0])  # Декодируем адрес из URL
-        print(f"Извлеченный адрес: {address_raw}")
-        if address_raw:
-            # Декодируем URL-кодирование
-
-            # Удаляем запятые
-            cleaned_string = address_raw.replace(",", "")
-
-            # Разделяем на слова
-            words = cleaned_string.split()
-
-            # Оставляем только последние вхождения слов
-            unique_words = {}
-            for i, word in enumerate(words):
-                unique_words[word] = i  # Сохраняем индекс последнего вхождения
-
-            # Сортируем слова по их индексу появления и формируем результат
-            address_unquote = " ".join(sorted(unique_words, key=unique_words.get))
-            address_quote = quote(address_unquote, safe="")
-        
-
-    params = {"q": address_unquote, "format": "json", "addressdetails": 1}
+    
+    params = {"q": addresstorequest_unquote, "format": "json", "addressdetails": 1}
     headers = {
         'User-Agent': 'NonameApp/1.0 (lavr2004@gmail.com)'  # Укажите свои данные
     }
+
+    if NOMINATIM_PUBLIC_API_URL == NOMINATIM_URL:
+        print(f"OK - pause before request public API: {NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS} seconds...")
+        time.sleep(NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS)
+    
     response = requests.get(NOMINATIM_URL, params=params, headers=headers)
-    #urltorequest = f"{NOMINATIM_URL}?{parsed_url.query}&format=json"
+
+    #tolookupindebug_urltorequest = f"{NOMINATIM_URL}?q={quote(addresstorequest_unquote, safe="")}&format=json"
     #response = requests.get(urltorequest, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        data2 = response.text
+        #tolookupindebug_data2 = response.text
         if data:
             return {
                 "job_latitude": data[0].get("lat"),
@@ -142,7 +173,7 @@ def fetch_geolocation(job):
 
 # Функция для сохранения информации о запуске парсера
 def save_parser_iteration(file_name, timestamp, response_status_code, new_jobs_count):
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO parseriteration (parseriterationfile, timestamp, response_status_code, new_jobs_count)
@@ -152,7 +183,7 @@ def save_parser_iteration(file_name, timestamp, response_status_code, new_jobs_c
         return cursor.lastrowid
 
 def save_jobs_to_database(jobs, parseriteration_id):
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         new_jobs = 0
         for job in jobs:
@@ -227,55 +258,6 @@ def save_jobs_to_database(jobs, parseriteration_id):
 
 
 
-# Функция для сохранения вакансий в базу данных
-# def save_jobs_to_database(jobs, parseriteration_id):
-#     with sqlite3.connect(DATABASE_FILE) as conn:
-#         cursor = conn.cursor()
-#         new_jobs = 0
-#         for job in jobs:
-#             try:
-#                 # Сохраняем основную информацию о вакансии
-#                 cursor.execute("""
-#                     INSERT INTO jobs (id, stanowisko, miejscePracy, pracodawca, dataDodaniaCbop, 
-#                                       dataWaznOd, dataWaznDo, wynagrodzenie, zakresObowiazkow, parseriteration_id)
-#                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-#                 """, (
-#                     job["id"],
-#                     job["stanowisko"],
-#                     job["miejscePracy"],
-#                     job["pracodawca"],
-#                     job["dataDodaniaCbop"],
-#                     job["dataWaznOd"],
-#                     job["dataWaznDo"],
-#                     job["wynagrodzenie"],
-#                     job.get("zakresObowiazkow", ""),
-#                     parseriteration_id
-#                 ))
-#                 new_jobs += 1
-
-#                 # Получаем геолокационные данные
-#                 address = job.get("miejscePracy", "")
-#                 geo_data = fetch_geolocation(address)
-#                 if geo_data:
-#                     cursor.execute("""
-#                         UPDATE jobs
-#                         SET job_latitude = ?, job_longitude = ?, job_country = ?, job_locality = ?, job_street = ?, job_building = ?
-#                         WHERE id = ?
-#                     """, (
-#                         geo_data["job_latitude"],
-#                         geo_data["job_longitude"],
-#                         geo_data["job_country"],
-#                         geo_data["job_locality"],
-#                         geo_data["job_street"],
-#                         geo_data["job_building"],
-#                         job["id"]
-#                     ))
-#             except sqlite3.IntegrityError:
-#                 continue
-#         conn.commit()
-#     return new_jobs
-
-
 # Основная функция
 def main():
     create_database()
@@ -289,8 +271,9 @@ def main():
         jobs = data.get("payload", {}).get("ofertyPracyPage", {}).get("content", [])
         
         # Сохраняем JSON-файл
-        os.makedirs("job_data", exist_ok=True)
-        with open(f"job_data/{file_name}", "w", encoding="utf-8") as fw:
+        os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+        fp = os.path.join(FOLDERPATH_DAILYDATA, file_name)
+        with open(fp, "w", encoding="utf-8") as fw:
             json.dump(jobs, fw, ensure_ascii=False, indent=4)
 
         # Сохраняем информацию о запуске парсера
@@ -300,7 +283,7 @@ def main():
         new_jobs_count = save_jobs_to_database(jobs, parseriteration_id)
 
         # Обновляем количество новых вакансий в таблице parseriteration
-        with sqlite3.connect(DATABASE_FILE) as conn:
+        with sqlite3.connect(DATABASE_FILEPATH) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE parseriteration

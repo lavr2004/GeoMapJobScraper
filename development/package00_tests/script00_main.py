@@ -1,0 +1,5 @@
+from development.package001_urzad_pracy import v006_urzad_pracy_jobs_onlynewwithdatabase_evidence_nominatim_full as script001_parsedatafrom_urzadpracy
+script001_parsedatafrom_urzadpracy.main()
+
+from development.package001_urzad_pracy import v010_urzad_pracy_jobs_mapgenerator_filtering2 as script002_generatemap
+#autoexec on import...

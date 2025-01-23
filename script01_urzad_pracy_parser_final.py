@@ -2,6 +2,7 @@ import requests
 import sqlite3
 import json
 import os
+import time
 from datetime import datetime
 
 from urllib.parse import unquote, urlparse, parse_qs, quote
@@ -39,6 +40,7 @@ DATA = {
 NOMINATIM_PRIVATE_API_URL = "http://localhost:8080/search"
 NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
+NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
 
 
 # Функция для создания базы данных
@@ -145,6 +147,11 @@ def fetch_geolocation(job):
     headers = {
         'User-Agent': 'NonameApp/1.0 (lavr2004@gmail.com)'  # Укажите свои данные
     }
+
+    if NOMINATIM_PUBLIC_API_URL == NOMINATIM_URL:
+        print(f"OK - pause before request public API: {NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS} seconds...")
+        time.sleep(NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS)
+    
     response = requests.get(NOMINATIM_URL, params=params, headers=headers)
 
     #tolookupindebug_urltorequest = f"{NOMINATIM_URL}?q={quote(addresstorequest_unquote, safe="")}&format=json"
