@@ -99,25 +99,86 @@ def create_database():
         """)
         conn.commit()
 
+def parse_additionally_from_offer_page(jobid):
+    i = NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS
+    while i > 0:
+        print(f"OK - technical pause before request to public API {i} seconds...")
+        time.sleep(1)
+        i -= 1
+    
+    # url = f"https://oferty.praca.gov.pl/portal-api/v3/oferta/szczegoly/{jobid}?alreadyVisited=true&hashJap="
+    # url = None
+    
+    try:
+        # Выполнение GET-запроса
+        headers = {
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.9,ru-BY;q=0.8,ru-RU;q=0.7,ru;q=0.6',
+            'Connection': 'keep-alive',
+            # 'Cookie': 'JSESSIONID=29D988089D078A84A8388D50070C4614.worker15; _ga=GA1.3.876714283.1734011519; _ga_HGXEGXBYEQ=GS1.3.1737155787.23.1.1737155794.53.0.0; cookieConsent=accepted; TS00000000076=0860e70c7dab280023fd2a44e98d5ff798513ff58c90ad87d87511669828a715a87eee304392eca6881a40db5c3fe5b508bc4e125f09d00019c4797ad6e1319444a6975157abb61c81cee8a9eea446618c98f5597f065697f25db19ca6cafa2b85448e435427aad0f9147b365d431b3bb6e271e8cd8b6274ae8fc290e6fbda0d680b32290a91a1abdbd5880d5cf00bdf63425ef730ebd0df9f40248f3029794851ee311110d296be3dcedb71e7aed81868b7c13445d0ffac1562f4c4574d74c3ec0281975793d8f10bb8914a7e09016ff4cbd0d410b68f586d56f80fc28d0ef9c6719574e1bddde760d2f0074eef232668d04c47f246e36e775e7fa429f756d5571b2b46470e0ad7; TSPD_101_DID=0860e70c7dab2800681eee8673f7a69544dda0be38e93686884dd9088efe7c621fadb898b4d2b1a4095baf6b6f4b873a08c0238c39063800ffefa35b0672ee8b3b9105209ab702f5a2065bc81b64875999fa025db83b71fb4f62c07c24abe3b6e86ae78936e20fcacf05f32361e97a13; TS0155ea11=01a1834bee2ed8fdd86250018355bd6a7a55f9beae96fffadc7543e9c07fe67e45c1b57064e4bf439ef273fa0b9481746b21611a63; TS0bfea4fd027=0860e70c7dab2000d07f605c5a524696f9ceb81071b962bb3ec890c5660c46e05b26babca779b3fc089b7eb5761130004c118c710ef36d70419dadf7ac6e845f1ec66d1069692cb46a6f9bd847dbf67e5f4d5e2fce9ee250fe1d2163801a2ca5',
+            'Referer': f'https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/{jobid}',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        }
+
+        params = {
+            'alreadyVisited': 'true',
+            'hashJap': '',
+        }
+
+        response = requests.get(
+            f'https://oferty.praca.gov.pl/portal-api/v3/oferta/szczegoly/{jobid}',
+            params=params,
+            headers=headers,
+        )
+        response.raise_for_status()  # Проверка на ошибки HTTP
+        
+        # Получение JSON-данных
+        data = response.json()
+        
+        # Парсинг значения адреса
+        # address = data["payload"]["pracodawca"]["adres"]
+        url = data.get("payload", "").get("pracodawca", "").get("mapaGoogleUrl", "")
+        if not url:
+            url = data.get("payload", "").get("pracodawca", "").get("mapaOsmUrl", "")
+    except requests.RequestException as e:
+        return f"ER - Ошибка запроса: {e}"
+    except ValueError:
+        return "Не удалось декодировать JSON."
+    
+    return url
 
 
 # Функция для вызова Nominatim
 def fetch_geolocation(job):
     def get_value_torequestfromnominatim(job):
+        address_unquote = None
+
         url = job.get("mapaGoogleUrl", "")
         if not url:
             url = job.get("mapaOsmUrl", "")
-            if not url:
-                return None
+        
+        if "Warszawa%2C%20Warszawa" in url:
+            url = parse_additionally_from_offer_page(job.get("id"))
 
+        
+        
         parsed_url = urlparse(url)
         query_params = parse_qs(parsed_url.query)
         if 'query' not in query_params and "q" not in query_params:
             #address = job("miejscePracy","Warsazawa, Polska")
-            return None
-            print(f"Адрес не извлечен из ссылки, но предустановлен")
+            # return None
+            print(f"ER: адрес не извлечен из ссылки, но предустановлен")
         else:
             address_raw = unquote(query_params['q'][0])  # Декодируем адрес из URL
+            if not address_raw:
+                address_raw = unquote(query_params['query'][0])
+            
             print(f"Извлеченный адрес: {address_raw}")
             if address_raw:
                 # Декодируем URL-кодирование
@@ -136,12 +197,12 @@ def fetch_geolocation(job):
                 # Сортируем слова по их индексу появления и формируем результат
                 address_unquote = " ".join(sorted(unique_words, key=unique_words.get))
                 # address_quote = quote(address_unquote, safe="")
-                return address_unquote
+        return address_unquote
 
     
     addresstorequest_unquote = get_value_torequestfromnominatim(job)
-    if not addresstorequest_unquote:
-        return None
+    # if not addresstorequest_unquote:
+    #     return None
     
     params = {"q": addresstorequest_unquote, "format": "json", "addressdetails": 1}
     headers = {
@@ -161,8 +222,8 @@ def fetch_geolocation(job):
         #tolookupindebug_data2 = response.text
         if data:
             return {
-                "job_latitude": data[0].get("lat"),
-                "job_longitude": data[0].get("lon"),
+                "job_latitude": data[0].get("lat") if addresstorequest_unquote else 0,
+                "job_longitude": data[0].get("lon") if addresstorequest_unquote else 0,
                 "job_country": data[0]["address"].get("country"),
                 "job_locality": data[0]["address"].get("city", data[0]["address"].get("town", data[0]["address"].get("village"))),
                 "job_street": data[0]["address"].get("road"),
@@ -296,7 +357,6 @@ def main():
     else:
         print(f"Ошибка запроса: {response.status_code}")
         save_parser_iteration(file_name, timestamp, response.status_code, 0)
-
 
 if __name__ == "__main__":
     main()
