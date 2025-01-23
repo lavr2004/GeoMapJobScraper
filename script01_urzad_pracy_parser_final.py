@@ -10,9 +10,18 @@ from urllib.parse import unquote, urlparse, parse_qs, quote
 COUNT_OF_JOBS_TO_REQUEST = 500
 IS_USE_PUBLIC_NOMINATIM_API = False
 
-# Константы
-DATABASE_FILE = "urzadpracy_jobs.sqlite"
-#DATABASE_FILE = "test.sqlite"
+# Константы FILESYSTEM
+FOLDERNAME_RESULTS_ALL = "data_results"
+FOLDERNAME_DAILYDATA = "daily_results"
+
+FOLDERPATH_RESULTS_ALL = os.path.join(os.getcwd(), FOLDERNAME_RESULTS_ALL)
+FOLDERPATH_DAILYDATA = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_DAILYDATA)
+
+os.makedirs(FOLDERPATH_RESULTS_ALL, exist_ok=True)
+os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+
+DATABASE_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+#DATABASE_FILEPATH = "test.sqlite"
 
 
 API_URL = f"https://oferty.praca.gov.pl/portal-api/v3/oferta/wyszukiwanie?page=0&size={COUNT_OF_JOBS_TO_REQUEST}&sort=dataDodania,desc"
@@ -34,7 +43,7 @@ NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOM
 
 # Функция для создания базы данных
 def create_database():
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
@@ -157,7 +166,7 @@ def fetch_geolocation(job):
 
 # Функция для сохранения информации о запуске парсера
 def save_parser_iteration(file_name, timestamp, response_status_code, new_jobs_count):
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO parseriteration (parseriterationfile, timestamp, response_status_code, new_jobs_count)
@@ -167,7 +176,7 @@ def save_parser_iteration(file_name, timestamp, response_status_code, new_jobs_c
         return cursor.lastrowid
 
 def save_jobs_to_database(jobs, parseriteration_id):
-    with sqlite3.connect(DATABASE_FILE) as conn:
+    with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         new_jobs = 0
         for job in jobs:
@@ -255,8 +264,9 @@ def main():
         jobs = data.get("payload", {}).get("ofertyPracyPage", {}).get("content", [])
         
         # Сохраняем JSON-файл
-        os.makedirs("job_data", exist_ok=True)
-        with open(f"job_data/{file_name}", "w", encoding="utf-8") as fw:
+        os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+        fp = os.path.join(FOLDERPATH_DAILYDATA, file_name)
+        with open(fp, "w", encoding="utf-8") as fw:
             json.dump(jobs, fw, ensure_ascii=False, indent=4)
 
         # Сохраняем информацию о запуске парсера
@@ -266,7 +276,7 @@ def main():
         new_jobs_count = save_jobs_to_database(jobs, parseriteration_id)
 
         # Обновляем количество новых вакансий в таблице parseriteration
-        with sqlite3.connect(DATABASE_FILE) as conn:
+        with sqlite3.connect(DATABASE_FILEPATH) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE parseriteration

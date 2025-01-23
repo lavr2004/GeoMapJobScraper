@@ -1,8 +1,9 @@
-import sqlite3  # или используйте другой драйвер для вашей базы данных
+import sqlite3 
 import os
 from geopy.distance import geodesic
 
-DATABASE_FILE = "urzadpracy_jobs.sqlite"
+FOLDERNAME_RESULTS_ALL = "data_results"
+FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
 
 MAX_DISTANCE_AROUND_AREA_KM = 10
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
@@ -30,7 +31,7 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 
 
 # Подключаемся к базе данных
-conn = sqlite3.connect(DATABASE_FILE)
+conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
@@ -340,7 +341,7 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-html_file_path = 'vacancies_map.html'
+html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 
