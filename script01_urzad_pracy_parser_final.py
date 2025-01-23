@@ -146,6 +146,12 @@ def parse_additionally_from_offer_page(jobid):
         url = data.get("payload", "").get("pracodawca", "").get("mapaGoogleUrl", "")
         if not url:
             url = data.get("payload", "").get("pracodawca", "").get("mapaOsmUrl", "")
+        
+        if "Warszawa%2C%20Warszawa" in url:
+            v = data.get("payload", "").get("warunki", "").get("miejscePracy", "")
+            url = f"https://maps.google.pl/maps?q={quote(v)}"
+
+
     except requests.RequestException as e:
         return f"ER - Ошибка запроса: {e}"
     except ValueError:
