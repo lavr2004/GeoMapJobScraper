@@ -219,22 +219,26 @@ def fetch_geolocation(job):
         print(f"OK - pause before request public API: {NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS} seconds...")
         time.sleep(NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS)
     
-    response = requests.get(NOMINATIM_URL, params=params, headers=headers)
+    try:
+        response = requests.get(NOMINATIM_URL, params=params, headers=headers)
 
-    #tolookupindebug_urltorequest = f"{NOMINATIM_URL}?q={quote(addresstorequest_unquote, safe="")}&format=json"
-    #response = requests.get(urltorequest, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        #tolookupindebug_data2 = response.text
-        if data:
-            return {
-                "job_latitude": data[0].get("lat") if addresstorequest_unquote else 0,
-                "job_longitude": data[0].get("lon") if addresstorequest_unquote else 0,
-                "job_country": data[0]["address"].get("country"),
-                "job_locality": data[0]["address"].get("city", data[0]["address"].get("town", data[0]["address"].get("village"))),
-                "job_street": data[0]["address"].get("road"),
-                "job_building": data[0]["address"].get("house_number"),
-            }
+        #tolookupindebug_urltorequest = f"{NOMINATIM_URL}?q={quote(addresstorequest_unquote, safe="")}&format=json"
+        #response = requests.get(urltorequest, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            #tolookupindebug_data2 = response.text
+            if data:
+                return {
+                    "job_latitude": data[0].get("lat") if addresstorequest_unquote else 0,
+                    "job_longitude": data[0].get("lon") if addresstorequest_unquote else 0,
+                    "job_country": data[0]["address"].get("country"),
+                    "job_locality": data[0]["address"].get("city", data[0]["address"].get("town", data[0]["address"].get("village"))),
+                    "job_street": data[0]["address"].get("road"),
+                    "job_building": data[0]["address"].get("house_number"),
+                }
+    except Exception as e:
+        print(f"ER: {e}")
+    
     return None
 
 

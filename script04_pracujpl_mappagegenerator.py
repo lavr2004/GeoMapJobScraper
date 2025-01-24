@@ -3,9 +3,9 @@ import os
 from geopy.distance import geodesic
 
 FOLDERNAME_RESULTS_ALL = "data_results"
-FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "pracujpl_jobs.sqlite")
 
-MAX_DISTANCE_AROUND_AREA_KM = 6
+MAX_DISTANCE_AROUND_AREA_KM = 100
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
 MAX_COUNT_OF_JOBS_FILTERED = 1000
 
@@ -148,7 +148,7 @@ conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
-cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseriteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseriteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+cursor.execute(f'SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -339,7 +339,7 @@ def getcode_map_full2(vacancies):
                 marker.bindPopup(
                     '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + vacancy.job_address_to_show + '<br><br>' +
                     '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
-                    '<a href="https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/' + vacancy.id + '" target="_blank">Details...</a>'
+                    '<a href="https://www.pracuj.pl/praca/,oferta,' + vacancy.id + '" target="_blank">Details...</a>'
                 );
 
                 markers.push({ marker, is_new: vacancy.is_new });
@@ -454,7 +454,7 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
+html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_pracujpl_map.html')
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 
