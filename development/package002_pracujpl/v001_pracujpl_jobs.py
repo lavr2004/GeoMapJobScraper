@@ -86,7 +86,7 @@ cursor.execute('''
 ''')
 
 # Данные для записи в таблицу parseiteration
-parseiteraion_results_filepath = settings.get_jsonresultsfilepath(PLATFORMNAME_str)
+parseiteraion_results_filepath = settings.get_dailyresultsfilename_fc(PLATFORMNAME_str)
 parseiteraion_results_filename = settings.get_filenamefrompath(parseiteraion_results_filepath)
 current_timestamp = settings.get_timestamp()
 response_status_code = response.status_code

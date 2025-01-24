@@ -4,7 +4,8 @@ import re
 import json
 
 PLATFORMNAME_str = "pracujpl"
-DATABASE_FILENAME_str = settings.get_databasefilename_fc(PLATFORMNAME_str)
+# DATABASE_FILENAME_str = settings.get_databasefilename_fc(PLATFORMNAME_str)
+DATABASE_FILEPATH_str = settings.get_databasefilepath_fc(PLATFORMNAME_str)
 URL_START_str = 'https://www.pracuj.pl/praca/warszawa;kw'
 
 headers = {
@@ -45,8 +46,7 @@ json_data = json.loads(script_tag.string)
 jobs = json_data["props"]["pageProps"]["data"]["jobOffers"]["groupedOffers"]
 
 # Подключаемся к SQLite базе данных
-databasefilepath_str = settings.get_databasefilepath_fc(PLATFORMNAME_str)
-conn = sqlite3.connect(databasefilepath_str)
+conn = sqlite3.connect(DATABASE_FILEPATH_str)
 cursor = conn.cursor()
 
 # Создаём таблицу job_offers
@@ -93,7 +93,7 @@ cursor.execute('''
 ''')
 
 # Данные для записи в таблицу parseiteration
-parseiteraion_results_filepath = settings.get_jsonresultsfilepath(PLATFORMNAME_str)
+parseiteraion_results_filepath = settings.get_dailyresultsfilepath_fc(PLATFORMNAME_str)
 parseiteraion_results_filename = settings.get_filenamefrompath(parseiteraion_results_filepath)
 current_timestamp = settings.get_timestamp()
 response_status_code = response.status_code
@@ -218,29 +218,6 @@ def parse_street_from_url_warszawa_fc(restofurl_str):
         r = r.replace("-"," ")
         r = r.title()
         return r, restofurl_str
-        
-
-
-    # lastindex = len(restofurl_str) - 1
-    
-    # startofstringfound = False
-    # wordscount = 0
-    # wordscountlimit = 4
-    # for i in range(len(restofurl_str) - 1, -1, -1):
-
-    #     if restofurl_str[i] == '-' and startofstringfound:
-    #         wordscount += 1
-    #         if wordscountlimit == wordscount:
-
-
-    #     if restofurl_str[i] == '-':
-    #         r += " "
-    #         lastindex = i
-    #         continue
-
-    #     if restofurl_str[i] in settings.ALPHABET_POLISH_str:
-    #         startofstringfound = True
-    #         r += restofurl_str[i]
 
 
 
@@ -267,11 +244,6 @@ def parse_address_from_url(url):
         locality, restofstring = parse_lastword_from_url_fc(restofstring)
     else:
         locality = "Warszawa"
-    
-
-    # locality = address_parts[0].capitalize()
-    # street = address_parts[1].capitalize()
-    # building = "-".join(address_parts[2:])
 
     return locality, street, building
 
@@ -316,6 +288,10 @@ for offer in jobs:
         if "Pulawska" in job_street:
             job_street = "Pulawska"
     
+    if not job_street:
+        job_building = None
+
+    
     job_locality = job_locality.strip() if job_locality else job_locality
     job_street = job_street.strip() if job_street else job_street
     job_building = job_building.strip() if job_building else job_building
@@ -341,7 +317,7 @@ for offer in jobs:
 conn.commit()
 conn.close()
 
-print(f"Данные успешно сохранены в базе данных {DATABASE_FILENAME_str}")
+print(f"Данные успешно сохранены в базе данных {DATABASE_FILEPATH_str}")
 print(response.status_code)
 
 
@@ -349,12 +325,13 @@ print(response.status_code)
 # =====================================================
 
 # Подключение к базе данных SQLite
-conn = sqlite3.connect(databasefilepath_str)
+conn = sqlite3.connect(DATABASE_FILEPATH_str)
 cursor = conn.cursor()
 
 # Функция для получения координат через Nominatim
 def get_coordinates(address):
-    base_url = "http://localhost:8080/search"
+    latitude, longitude = 0, 0
+    base_url = settings.NOMINATIM_URL
 
     params = {"q": address, "format": "json", "addressdetails": 1}
     headers = {
@@ -368,11 +345,10 @@ def get_coordinates(address):
         if data:  # Если API вернул данные
             latitude = data[0].get("lat")
             longitude = data[0].get("lon")
-            return latitude, longitude
-        return None, None
     except (requests.RequestException, ValueError) as e:
         print(f"Ошибка при запросе координат для адреса '{address}': {e}")
-        return None, None
+    finally:
+        return latitude, longitude
 
 # Получение вакансий из базы данных
 cursor.execute("SELECT id, job_locality, job_street, job_building, display_workplace FROM jobs WHERE job_latitude is NULL")
@@ -389,14 +365,14 @@ for job in jobs:
         address = display_workplace
     
     if address:  # Если есть адрес для поиска
-        latitude, longitude = get_coordinates(address)
-        if not latitude or not longitude:
-            latitude, longitude = get_coordinates(job_locality)
-        if latitude and longitude:  # Если координаты получены успешно
-            cursor.execute(
+        latitude, longitude = get_coordinates(address)#latitude, longitude = 0, 0
+        # if not latitude or not longitude:
+        #     latitude, longitude = get_coordinates(job_locality)
+        cursor.execute(
                 "UPDATE jobs SET job_latitude = ?, job_longitude = ? WHERE id = ?",
                 (latitude, longitude, job_id),
             )
+        if latitude and longitude:  # Если координаты получены успешно
             print(f"Координаты для вакансии ID {job_id} обновлены: {latitude}, {longitude}")
         else:
             print(f"Не удалось получить координаты для вакансии ID {job_id} (адрес: {address})")

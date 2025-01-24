@@ -1,9 +1,13 @@
 import sqlite3 
 import os
 from geopy.distance import geodesic
+import settings
 
-FOLDERNAME_RESULTS_ALL = "data_results"
-FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+PLATFORMNAME_str = "urzadpracy"
+
+# FOLDERNAME_RESULTS_ALL = "data_results"
+# FILEPATH_DATABASE = os.path.join(settings.FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+FILEPATH_DATABASE = settings.get_databasefilepath_fc(PLATFORMNAME_str)
 
 MAX_DISTANCE_AROUND_AREA_KM = 6
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
@@ -14,6 +18,7 @@ CENTRALPOINT_COORDINATES_LON = 20.935230422848832
 
 # DEFAULT_COORDINATES_LAT = 52.2319581
 # DEFAULT_COORDINATES_LON = 21.0067249
+# coordinates that setting up if vacancy no have any coordinates geolocation
 DEFAULT_COORDINATES_LAT = CENTRALPOINT_COORDINATES_LAT
 DEFAULT_COORDINATES_LON = CENTRALPOINT_COORDINATES_LON
 
@@ -22,9 +27,8 @@ ALL_VACANCIES_COUNT_GOT = 0
 # Координаты, от которых нужно фильтровать (например, Варшава)
 reference_point = (CENTRALPOINT_COORDINATES_LAT, CENTRALPOINT_COORDINATES_LON)
 
-import random
-
 # Функция для смещения координат
+# import random
 # def add_offset(latitude, longitude, index):
 #     offset = 0.0001 * index  # Индекс увеличивает смещение
 #     latitude += random.choice([-1, 1]) * offset
@@ -144,7 +148,8 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 
 
 # Подключаемся к базе данных
-conn = sqlite3.connect(FILEPATH_DATABASE)
+#conn = sqlite3.connect(FILEPATH_DATABASE)
+conn = sqlite3.connect(settings.get_databasefilepath_fc(PLATFORMNAME_str))
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
@@ -454,7 +459,8 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
+#html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
+html_file_path = settings.get_htmlmapfilepath_fc(PLATFORMNAME_str)
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 

@@ -4,25 +4,31 @@ import json
 import os
 import time
 from datetime import datetime
+import settings
 
 from urllib.parse import unquote, urlparse, parse_qs, quote
+
+PLATFORMNAME_str = "urzadpracy"
 
 #SETTINGS
 COUNT_OF_JOBS_TO_REQUEST = 500
 IS_USE_PUBLIC_NOMINATIM_API = False
 
 # Константы FILESYSTEM
-FOLDERNAME_RESULTS_ALL = "data_results"
-FOLDERNAME_DAILYDATA = "daily_results"
+# FOLDERNAME_RESULTS_ALL = "data_results"
+# FOLDERNAME_DAILYDATA = "daily_results"
 
-FOLDERPATH_RESULTS_ALL = os.path.join(os.getcwd(), FOLDERNAME_RESULTS_ALL)
-FOLDERPATH_DAILYDATA = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_DAILYDATA)
+# FOLDERPATH_RESULTS_ALL = os.path.join(os.getcwd(), FOLDERNAME_RESULTS_ALL)
+# FOLDERPATH_RESULTS_ALL = settings.get_
+# FOLDERPATH_DAILYDATA = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_DAILYDATA)
 
-os.makedirs(FOLDERPATH_RESULTS_ALL, exist_ok=True)
-os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+# os.makedirs(FOLDERPATH_RESULTS_ALL, exist_ok=True)
+# os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
 
-DATABASE_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, "urzadpracy_jobs.sqlite")
-#DATABASE_FILEPATH = "test.sqlite"
+# DATABASE_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, "urzadpracy_jobs.sqlite")
+# DATABASE_FILEPATH = "test.sqlite"
+
+DATABASE_FILEPATH = settings.get_databasefilepath_fc(PLATFORMNAME_str)
 
 
 API_URL = f"https://oferty.praca.gov.pl/portal-api/v3/oferta/wyszukiwanie?page=0&size={COUNT_OF_JOBS_TO_REQUEST}&sort=dataDodania,desc"
@@ -37,10 +43,15 @@ DATA = {
     "kodyPocztoweId": ["01-107"],
 }
 
-NOMINATIM_PRIVATE_API_URL = "http://localhost:8080/search"
-NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
-NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
-NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
+# NOMINATIM_PRIVATE_API_URL = "http://localhost:8080/search"
+# NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
+# NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
+# NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
+
+NOMINATIM_PRIVATE_API_URL = settings.NOMINATIM_PRIVATE_API_URL
+NOMINATIM_PUBLIC_API_URL = settings.NOMINATIM_PUBLIC_API_URL
+NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if IS_USE_PUBLIC_NOMINATIM_API else NOMINATIM_PRIVATE_API_URL
+NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = settings.NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS
 
 
 # Функция для создания базы данных
@@ -335,19 +346,21 @@ def main():
 
     response = requests.post(API_URL, headers=HEADERS, json=DATA)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_name = f"jobs_{timestamp}.json"
+    #file_name = f"jobs_{timestamp}.json"
 
     if response.status_code == 200:
         data = response.json()
         jobs = data.get("payload", {}).get("ofertyPracyPage", {}).get("content", [])
         
         # Сохраняем JSON-файл
-        os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
-        fp = os.path.join(FOLDERPATH_DAILYDATA, file_name)
+        # os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
+        #fp = os.path.join(FOLDERPATH_DAILYDATA, file_name)
+        fp = settings.get_dailyresultsfilepath_fc(PLATFORMNAME_str)
         with open(fp, "w", encoding="utf-8") as fw:
             json.dump(jobs, fw, ensure_ascii=False, indent=4)
 
         # Сохраняем информацию о запуске парсера
+        file_name = settings.get_filenamefrompath(fp)
         parseriteration_id = save_parser_iteration(file_name, timestamp, response.status_code, 0)
         
         # Сохраняем вакансии

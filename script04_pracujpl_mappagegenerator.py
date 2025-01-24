@@ -1,11 +1,15 @@
 import sqlite3 
 import os
 from geopy.distance import geodesic
+import settings
 
-FOLDERNAME_RESULTS_ALL = "data_results"
-FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "pracujpl_jobs.sqlite")
+PLATFORMNAME_str = "pracujpl"
 
-MAX_DISTANCE_AROUND_AREA_KM = 100
+#FOLDERNAME_RESULTS_ALL = "data_results"
+#FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "pracujpl_jobs.sqlite")
+FILEPATH_DATABASE = settings.get_databasefilepath_fc(PLATFORMNAME_str)
+
+MAX_DISTANCE_AROUND_AREA_KM = 20
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
 MAX_COUNT_OF_JOBS_FILTERED = 1000
 
@@ -454,7 +458,8 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_pracujpl_map.html')
+#html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_pracujpl_map.html')
+html_file_path = settings.get_htmlmapfilepath_fc(PLATFORMNAME_str)
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 
