@@ -127,6 +127,11 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
             lat = DEFAULT_COORDINATES_LAT
             lon = DEFAULT_COORDINATES_LON
 
+        # Проверяем, актуальна ли дата вакансии
+        expiration_date = parse_date(temp[11])  # dataWaznDo
+        if expiration_date < CURRENT_DATE:
+            continue  # Пропускаем вакансию, если она неактуальна
+
         #todo: set default coordinates for parsing script later
         if lat == 52.2053382 and lon == 21.0745384:
             lat = CENTRALPOINT_COORDINATES_LAT#52.2321841
@@ -153,7 +158,20 @@ conn = sqlite3.connect(settings.get_databasefilepath_fc(PLATFORMNAME_str))
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
-cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseriteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseriteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+from datetime import datetime
+def parse_date(date_str):
+    return datetime.strptime(date_str, "%d.%m.%Y")
+# Получаем текущую дату
+CURRENT_DATE = datetime.now()
+
+cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseriteration_id, job_street, job_building, job_locality, dataDodaniaCbop, dataWaznDo FROM jobs ORDER BY parseriteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+# Извлекаем вакансии из базы данных, исключая те, у которых дата dataDodaniaCbop меньше текущей даты
+# cursor.execute(f'''SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseriteration_id, job_street, job_building, job_locality, dataDodaniaCbop
+#     FROM jobs
+#     WHERE dataDodaniaCbop >= ?
+#     ORDER BY parseriteration_id DESC
+#     LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}
+# ''', (current_date.strftime("%d.%m.%Y"),))
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -342,6 +360,7 @@ def getcode_map_full2(vacancies):
                 }).addTo(map);
 
                 marker.bindPopup(
+                    '<b><h5 style="color:red"> Published: </b>' + vacancy.last_publicated + '</h5><br>' +
                     '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + vacancy.job_address_to_show + '<br><br>' +
                     '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
                     '<a href="https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/' + vacancy.id + '" target="_blank">Details...</a>'
@@ -432,8 +451,8 @@ import json
 def getcode_vacanciesdata(vacancies):
     max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
-    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != "None" or str(vacancy[9]) != None else ""}"
-    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != "None" else ""}"
+    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != 'None' or str(vacancy[9]) != None else ''}"
+    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != 'None' else ''}"
     street_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 7)
     building_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 8)
     
@@ -449,7 +468,8 @@ def getcode_vacanciesdata(vacancies):
             'employee': str(vacancy[5])[:50],
             'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
-            'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", "")
+            'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", ""),
+            'last_publicated': str(vacancy[10]).split("T")[0] if vacancy[10] else "N/A"  # Добавляем дату публикации
         }
         for vacancy in vacancies
     ]

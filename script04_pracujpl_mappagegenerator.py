@@ -152,7 +152,15 @@ conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
-cursor.execute(f'SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+from datetime import datetime
+current_date = datetime.utcnow().isoformat()  # Получаем текущую дату в формате "YYYY-MM-DDTHH:MM:SS"
+#cursor.execute(f'SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality, last_publicated FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+cursor.execute("""SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality, last_publicated
+    FROM jobs 
+    WHERE expiration_date >= ? 
+    ORDER BY parseiteration_id DESC 
+    LIMIT ?""", (current_date, MAX_ALL_JOBS_COUNT_NOT_FILTERED)
+)
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -341,6 +349,7 @@ def getcode_map_full2(vacancies):
                 }).addTo(map);
 
                 marker.bindPopup(
+                    '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
                     '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + vacancy.job_address_to_show + '<br><br>' +
                     '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
                     '<a href="https://www.pracuj.pl/praca/,oferta,' + vacancy.id + '" target="_blank">Details...</a>'
@@ -431,8 +440,8 @@ import json
 def getcode_vacanciesdata(vacancies):
     max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
-    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != "None" or str(vacancy[9]) != None else ""}"
-    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != "None" else ""}"
+    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != 'None' or str(vacancy[9]) != None else ''}"
+    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != 'None' else ''}"
     street_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 7)
     building_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 8)
     
@@ -448,7 +457,9 @@ def getcode_vacanciesdata(vacancies):
             'employee': str(vacancy[5])[:50],
             'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
-            'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", "")
+            'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", ""),
+            #'last_publicated': datetime.strptime(str(vacancy[10]), "%Y-%m-%dT%H:%M:%SZ").strftime("%d-%m-%Y") if vacancy[10] else "N/A"  # Форматируем дату
+            'last_publicated': str(vacancy[10]).split("T")[0] if vacancy[10] else "N/A"  # Добавляем дату публикации
         }
         for vacancy in vacancies
     ]

@@ -170,9 +170,11 @@ def parse_additionally_from_offer_page(jobid):
     
     return url
 
-
+TRY_TO_CONNECT_NOMINATIM_COUNTER = 0
 # Функция для вызова Nominatim
 def fetch_geolocation(job):
+    global NOMINATIM_URL, TRY_TO_CONNECT_NOMINATIM_COUNTER
+
     def get_value_torequestfromnominatim(job):
         address_unquote = None
 
@@ -248,7 +250,13 @@ def fetch_geolocation(job):
                     "job_building": data[0]["address"].get("house_number"),
                 }
     except Exception as e:
-        print(f"ER: {e}")
+        if TRY_TO_CONNECT_NOMINATIM_COUNTER == 4:
+            input(f"ER: problem to connect any NOMINATIM service - local or public - need to solve it... Uploaded jobs count == 0")
+        else:
+            print(f"ER: {e}")
+            input(f"To switch API Nominatim from {NOMINATIM_URL} to another press enter...")
+            NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if NOMINATIM_URL == NOMINATIM_PRIVATE_API_URL else NOMINATIM_PRIVATE_API_URL
+            TRY_TO_CONNECT_NOMINATIM_COUNTER += 1
     
     return None
 
