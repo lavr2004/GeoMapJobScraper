@@ -269,7 +269,7 @@ def getcode_map_full2(vacancies):
     </head>
     <body>
 
-    <h1>VacMap:) ''' + str(len(vacancies)) + f" jobs from {ALL_VACANCIES_COUNT_GOT} job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} kilometers around" +'''</h1>
+    <h1>VacMap:) ''' + str(len(vacancies)) + f" job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} kilometers around" +'''</h1>
 
     <!-- Легенда -->
     <div>

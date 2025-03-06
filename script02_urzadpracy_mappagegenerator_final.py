@@ -129,7 +129,7 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 
         # Проверяем, актуальна ли дата вакансии
         expiration_date = parse_date(temp[11])  # dataWaznDo
-        if expiration_date < CURRENT_DATE:
+        if expiration_date <= CURRENT_DATE:
             continue  # Пропускаем вакансию, если она неактуальна
 
         #todo: set default coordinates for parsing script later
@@ -280,7 +280,7 @@ def getcode_map_full2(vacancies):
     </head>
     <body>
 
-    <h1>VacMap:) ''' + str(len(vacancies)) + f" jobs from {ALL_VACANCIES_COUNT_GOT} job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} kilometers around" +'''</h1>
+    <h1>VacMap:) ''' + str(len(vacancies)) + f" job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} kilometers around" +'''</h1>
 
     <!-- Легенда -->
     <div>
