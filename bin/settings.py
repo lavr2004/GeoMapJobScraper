@@ -1,10 +1,13 @@
 import os
 import datetime
+import logging
+import sys
+
 
 TIMESTAMP_FORCURRENTITERATION_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-FOLDERNAME_RESULTS_ALL = "data_results"
-FOLDERNAME_DAILYDATA = "daily_results"
+FOLDERNAME_RESULTS_ALL = "results"
+FOLDERNAME_DAILYDATA = "results_daily"
 
 FOLDERPATH_RESULTS_ALL = os.path.join(os.getcwd(), FOLDERNAME_RESULTS_ALL)
 FOLDERPATH_DAILYDATA = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_DAILYDATA)
@@ -21,6 +24,19 @@ NOMINATIM_PRIVATE_API_URL = "http://localhost:8080/search"
 NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if NOMINATIM_IS_USE_PUBLIC_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
 NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
+
+# SETTINGS LOGGING
+FOLDERNAME_LOGS = "logs"
+LOG_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_LOGS)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILEPATH),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
 # GET FILENAMES OUTPUT
 def get_databasefilename_fc(platformname_str = "pracujpl"):

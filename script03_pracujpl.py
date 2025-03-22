@@ -1,4 +1,4 @@
-import settings
+from bin import settings
 import time
 import random
 

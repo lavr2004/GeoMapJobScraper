@@ -23,7 +23,7 @@
 
 
 HMMM:
-https://massachusetts.pracuj.pl/recommendedJobOffers/listing/grouped?offset=0&limit=15&source=pracujpl&context=list&mpUserId=23446868&identityId=99bb3647-5c3f-4a50-y6ae-6a50428adf91&subservice=0
+https://massachusetts.pracuj.pl/recommendedJobOffers/listing/grouped?offset=0&limit=15&sources=pracujpl&context=list&mpUserId=23446868&identityId=99bb3647-5c3f-4a50-y6ae-6a50428adf91&subservice=0
 
 HMMMDATA:
 {2 entries

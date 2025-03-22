@@ -1,7 +1,7 @@
 import sqlite3 
 import os
 from geopy.distance import geodesic
-import settings
+from bin import settings
 
 PLATFORMNAME_str = "urzadpracy"
 

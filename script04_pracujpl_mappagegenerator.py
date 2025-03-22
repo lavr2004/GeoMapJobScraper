@@ -1,7 +1,7 @@
 import sqlite3 
 import os
 from geopy.distance import geodesic
-import settings
+from bin import settings
 
 PLATFORMNAME_str = "pracujpl"
 
@@ -25,8 +25,6 @@ ALL_VACANCIES_COUNT_GOT = 0
 
 # Координаты, от которых нужно фильтровать (например, Варшава)
 reference_point = (CENTRALPOINT_COORDINATES_LAT, CENTRALPOINT_COORDINATES_LON)
-
-import random
 
 # Функция для смещения координат
 # def add_offset(latitude, longitude, index):

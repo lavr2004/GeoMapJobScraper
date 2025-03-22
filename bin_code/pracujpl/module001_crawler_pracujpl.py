@@ -24,7 +24,12 @@ def get_html_response_from_url(url_str):
 
     return response.text, response.status_code
 
-def get_html_response_from_page_number(pagenumber_int = 2):
+def get_html_response_from_page_number(pagenumber_int = 2, sortoptions = None, radiuskm = None):
+    '''
+    https://www.pracuj.pl/praca/warszawa;wp?rd=30&sc=0
+    sortoptions: 0 => new vacancies; 4 => high-payment
+    radiuskm: 30 - kilometers around radius
+    '''
     cookies = {
         'gp__cfXfiDZP': '43',
         'gptrackCookie': '99bb3647-5c3f-4a50-y6ae-6a50428adf91',
@@ -98,8 +103,10 @@ def get_html_response_from_page_number(pagenumber_int = 2):
         'pn': f'{pagenumber_int}',
     }
 
-    response = requests.get('https://www.pracuj.pl/praca/warszawa;kw', params=params, cookies=cookies, headers=headers)
+    params.update({"sc": sortoptions}) if sortoptions else None
+    params.update({"rd": radiuskm}) if radiuskm else None
 
+    response = requests.get('https://www.pracuj.pl/praca/warszawa;kw', params=params, cookies=cookies, headers=headers)
 
     response.raise_for_status()
 

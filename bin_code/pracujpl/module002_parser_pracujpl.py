@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import json
-import settings as settings_obj
+from bin import settings as settings_obj
+
 
 def recognition_JSON_in_HTML_area_fc(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')

@@ -1,10 +1,9 @@
 import requests
 import sqlite3
 import json
-import os
 import time
 from datetime import datetime
-import settings
+from bin import settings
 
 from urllib.parse import unquote, urlparse, parse_qs, quote
 
@@ -354,7 +353,7 @@ def main():
 
     response = requests.post(API_URL, headers=HEADERS, json=DATA)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #file_name = f"jobs_{timestamp}.json"
+    file_name = f"jobs_{timestamp}.json"
 
     if response.status_code == 200:
         data = response.json()

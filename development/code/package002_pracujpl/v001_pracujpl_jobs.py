@@ -1,7 +1,6 @@
-import settings
+from bin import settings
 import requests
 import re
-import json
 
 PLATFORMNAME_str = "pracujpl"
 DATABASE_FILENAME_str = settings.get_databasefilename_fc(PLATFORMNAME_str)
