@@ -39,9 +39,14 @@ def parse_additionally_from_offer_page(jobid, nominatim_pause_if_public_api_seco
 
     # Парсинг значения адреса
     # address = data["payload"]["pracodawca"]["adres"]
-    url = data_json.get("payload", "").get("pracodawca", "").get("mapaGoogleUrl", "")
-    if not url:
-        url = data_json.get("payload", "").get("pracodawca", "").get("mapaOsmUrl", "")
+    url = ""
+    dc = data_json.get("payload", "")
+    if dc:
+        dc = dc.get("pracodawca", "")
+    if dc:
+        url = dc.get("mapaGoogleUrl", "")
+        if not url:
+            url = data_json.get("payload", "").get("pracodawca", "").get("mapaOsmUrl", "")
 
     if "Warszawa%2C%20Warszawa" in url:
         v = data_json.get("payload", "").get("warunki", "").get("miejscePracy", "")

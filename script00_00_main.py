@@ -5,7 +5,7 @@ from bin.parsers.pracujpl_all.pracujpl_all import PracujPLAllWarszawaParser
 def main():
     #launch_parser_pracujpl()
     launch_parser_urzadpracy()
-    launch_parser_pracujpl_all_warszawa()
+    #launch_parser_pracujpl_all_warszawa()
 
 def launch_parser_pracujpl_all_warszawa():
     parser = PracujPLAllWarszawaParser()
