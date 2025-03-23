@@ -1,9 +1,9 @@
-import sqlite3 
+import sqlite3
 import os
 from geopy.distance import geodesic
 from bin import settings
 
-PLATFORMNAME_str = "pracujpl"
+PLATFORMNAME_str = "pracujpl_all"
 
 #FOLDERNAME_RESULTS_ALL = "data_results"
 #FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "pracujpl_jobs.sqlite")
@@ -96,7 +96,7 @@ def add_offset_for_same_vacancies_coordinates(vacancies):
         else:
             # Если координаты новые, добавляем их в словарь
             seen_coords[(lat, lon)] = [list(vacancy_tuple)]
-        
+
     # вычисляем субкоординаты для повторяющихся координат
     for k, v in seen_coords.items():
         vacancy_list_list = v
@@ -106,7 +106,7 @@ def add_offset_for_same_vacancies_coordinates(vacancies):
             new_vacancies_lst_lst = generate_pin_offsets(vacancy_list_list)
         else:
             new_vacancies_lst_lst = [vacancy_list_list[0]]
-        
+
         # Добавляем пин с обновленными координатами
         for i in new_vacancies_lst_lst:
             processed_pins.append(i)
@@ -120,7 +120,7 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
         temp = list(vacancy)
         lat = temp[3]
         lon = temp[4]
-        
+
         if not lat or not lon:
             lat = DEFAULT_COORDINATES_LAT
             lon = DEFAULT_COORDINATES_LON
@@ -129,7 +129,7 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
         if lat == 52.2053382 and lon == 21.0745384:
             lat = CENTRALPOINT_COORDINATES_LAT#52.2321841
             lon = CENTRALPOINT_COORDINATES_LON
-        
+
         vacancy_coords = (lat, lon)  # (latitude, longitude)
         distance = geodesic(reference_point, vacancy_coords).km
         if distance <= max_distance_km:
@@ -158,7 +158,7 @@ cursor.execute("""SELECT id, job_title, salary, job_latitude, job_longitude, com
     WHERE expiration_date >= ? 
     ORDER BY parseiteration_id DESC 
     LIMIT ?""", (current_date, MAX_ALL_JOBS_COUNT_NOT_FILTERED)
-)
+               )
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -202,31 +202,19 @@ def getcode_map_full2(vacancies):
             .slider {
                 width: 300px;
             }
-
-            body {
-                background-color: #f8f9fa; /* Светло-серый цвет */
-                font-family: 'Roboto', sans-serif; /* Современный шрифт */
-                color: #212529; /* Основной цвет текста */
+            .search-container {
+                margin: 10px;
             }
-
+            body {
+                background-color: #f8f9fa;
+                font-family: 'Roboto', sans-serif;
+                color: #212529;
+            }
             h1 {
                 text-align: center;
                 color: #007bff;
                 margin-top: 20px;
             }
-
-            .legend {
-                padding: 10px;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            }
-
-            .legend h2 {
-                color: #343a40;
-                margin-bottom: 10px;
-            }
-
             .form-range {
                 appearance: none;
                 width: 100%;
@@ -237,11 +225,9 @@ def getcode_map_full2(vacancies):
                 opacity: 0.9;
                 transition: opacity 0.2s ease-in-out;
             }
-
             .form-range:hover {
                 opacity: 1;
             }
-
             .form-range::-webkit-slider-thumb {
                 appearance: none;
                 width: 20px;
@@ -251,17 +237,12 @@ def getcode_map_full2(vacancies):
                 cursor: pointer;
                 box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
             }
-
             .form-range::-moz-range-thumb {
                 width: 20px;
                 height: 20px;
                 background: #007bff;
                 border-radius: 50%;
                 cursor: pointer;
-            }
-
-            input.form-range {
-                background: #555 !important;
             }
         </style>
     </head>
@@ -277,6 +258,12 @@ def getcode_map_full2(vacancies):
         <button class="btn btn-primary me-2" onclick="filterMarkers('new')">Filter New Vacancies</button>
         <button class="btn btn-secondary me-2" onclick="filterMarkers('old')">Filter Old Vacancies</button>
         <button class="btn btn-success" onclick="filterMarkers('all')">No Filter</button>
+    </div>
+
+    <!-- Поисковая строка -->
+    <div class="search-container">
+        <label for="search-input">Search by Job Title:</label>
+        <input type="text" id="search-input" class="form-control" placeholder="Enter text to filter vacancies">
     </div>
 
     <!-- Filter -->
@@ -303,17 +290,11 @@ def getcode_map_full2(vacancies):
         maxZoom: 19
     }).addTo(map);
 
-    // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    //     attribution: '© OpenStreetMap contributors &copy; CartoDB',
-    //     subdomains: 'abcd',
-    //     maxZoom: 19}).addTo(map);
-
-    // Создаем пользовательскую иконку
     const binocularIcon = L.icon({
-        iconUrl: 'https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/pingus-icon-icon.png', // Путь к изображению иконки
-        iconSize: [32, 32], // Размеры иконки
-        iconAnchor: [16, 32], // Точка привязки (основание иконки)
-        popupAnchor: [0, -32] // Точка всплывающего окна
+        iconUrl: 'https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/pingus-icon-icon.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
     });
 
     let markers = [];
@@ -324,17 +305,19 @@ def getcode_map_full2(vacancies):
         fillOpacity: 0.1
     }).addTo(map);
 
-    function addMarkers(minSalary, maxDistance) {
+    function addMarkers(minSalary, maxDistance, searchText = '') {
         // Удаляем старые маркеры
         markers.forEach(({ marker }) => map.removeLayer(marker));
         markers = [];
 
         vacancies.forEach(vacancy => {
             const markerColor = vacancy.is_new ? 'red' : 'blue';
-            const salary = vacancy.salary; // Числовое значение зарплаты
+            const salary = vacancy.salary;
             const distance = map.distance([vacancy.latitude, vacancy.longitude], ''' + centerpoint_coords_list_str + ''');
+            const title = vacancy.title.toLowerCase();
+            const search = searchText.toLowerCase();
 
-            if (salary >= minSalary && distance <= maxDistance) {
+            if (salary >= minSalary && distance <= maxDistance && (search === '' || title.includes(search))) {
                 const marker = L.marker([vacancy.latitude, vacancy.longitude], {
                     icon: L.icon({
                         iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${markerColor}.png`,
@@ -357,7 +340,6 @@ def getcode_map_full2(vacancies):
             }
         });
 
-        // Добавляем маркер в центральную точку
         L.marker(''' + centerpoint_coords_list_str + ''', { icon: binocularIcon })
             .addTo(map)
             .bindPopup('<div class="animate__animated animate__bounce"><b>Here we start! :)</b><br>from here we start to search vacancies in area around</div>')
@@ -382,12 +364,13 @@ def getcode_map_full2(vacancies):
         radiusCircle.setRadius(radius);
     }
 
-    // Event listeners for sliders
+    // Event listeners for sliders and search
     document.getElementById('salary-slider').addEventListener('input', event => {
         const minSalary = parseInt(event.target.value, 10);
         document.getElementById('salary-value').textContent = `${minSalary} PLN`;
         const radius = parseInt(document.getElementById('radius-slider').value, 10) * 1000;
-        addMarkers(minSalary, radius);
+        const searchText = document.getElementById('search-input').value;
+        addMarkers(minSalary, radius, searchText);
     });
 
     document.getElementById('radius-slider').addEventListener('input', event => {
@@ -395,13 +378,19 @@ def getcode_map_full2(vacancies):
         document.getElementById('radius-value').textContent = `${event.target.value} km`;
         updateCircleRadius(radius);
         const minSalary = parseInt(document.getElementById('salary-slider').value, 10);
-        addMarkers(minSalary, radius);
+        const searchText = document.getElementById('search-input').value;
+        addMarkers(minSalary, radius, searchText);
+    });
+
+    document.getElementById('search-input').addEventListener('input', event => {
+        const searchText = event.target.value;
+        const minSalary = parseInt(document.getElementById('salary-slider').value, 10);
+        const radius = parseInt(document.getElementById('radius-slider').value, 10) * 1000;
+        addMarkers(minSalary, radius, searchText);
     });
 
     // Initial rendering
-    addMarkers(0, 10000);
-
-
+    addMarkers(0, ''' + str(MAX_DISTANCE_AROUND_AREA_KM) + '''000);
     </script>
     </body>
     </html>
@@ -426,7 +415,7 @@ def extract_salary(text):
     if s:
         if not s:
             return 0
-        
+
         for c in s:
             if c not in "0123456789":
                 continue
@@ -436,13 +425,13 @@ def extract_salary(text):
 
 import json
 def getcode_vacanciesdata(vacancies):
-    max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+    max_parseiteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
     country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != 'None' or str(vacancy[9]) != None else ''}"
     middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != 'None' else ''}"
     street_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 7)
     building_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 8)
-    
+
     fulladdress_lambda = lambda vacancy: f"{country_beginningaddress_lambda(vacancy)}{street_middleaddress_lambda(vacancy)}{building_middleaddress_lambda(vacancy)}" if street_middleaddress_lambda(vacancy)  else ""
 
     vacancies_data = [
@@ -453,7 +442,7 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
+            'is_new': vacancy[6] == max_parseiteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", ""),
             #'last_publicated': datetime.strptime(str(vacancy[10]), "%Y-%m-%dT%H:%M:%SZ").strftime("%d-%m-%Y") if vacancy[10] else "N/A"  # Форматируем дату

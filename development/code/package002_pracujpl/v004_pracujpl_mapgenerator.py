@@ -425,7 +425,7 @@ def extract_salary(text):
 
 import json
 def getcode_vacanciesdata(vacancies):
-    max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+    max_parseiteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
     country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != "None" or str(vacancy[9]) != None else ""}"
     middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != "None" else ""}"
@@ -442,7 +442,7 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
+            'is_new': vacancy[6] == max_parseiteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", "")
         }

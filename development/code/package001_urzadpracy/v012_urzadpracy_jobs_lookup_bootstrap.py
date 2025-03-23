@@ -35,7 +35,7 @@ conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
-cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseriteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseriteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseiteration_id, job_street, job_building, job_locality FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -312,7 +312,7 @@ def extract_salary(text):
 
 import json
 def getcode_vacanciesdata(vacancies):
-    max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+    max_parseiteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
     country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != "None" else ""}"
     middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != "None" else ""}"
@@ -329,7 +329,7 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
+            'is_new': vacancy[6] == max_parseiteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': fulladdress_lambda(vacancy)
         }

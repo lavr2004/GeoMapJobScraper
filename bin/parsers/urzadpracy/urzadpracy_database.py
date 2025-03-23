@@ -41,21 +41,21 @@ class Database_urzadpracy:
                 dodanePrzez TEXT,
                 ikonyOferty TEXT,
                 popularnosc TEXT,
-                parseriteration_id INTEGER,
+                parseiteration_id INTEGER,
                 job_latitude REAL,
                 job_longitude REAL,
                 job_country TEXT,
                 job_locality TEXT,
                 job_street TEXT,
                 job_building TEXT,
-                FOREIGN KEY (parseriteration_id) REFERENCES parseriteration (id)
+                FOREIGN KEY (parseiteration_id) REFERENCES parseiteration (id)
             )
         """)
 
         self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS parseriteration (
+            CREATE TABLE IF NOT EXISTS parseiteration (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                parseriterationfile TEXT,
+                parseiterationfile TEXT,
                 timestamp TEXT,
                 new_jobs_count INTEGER,
                 response_status_code INTEGER
@@ -65,13 +65,13 @@ class Database_urzadpracy:
 
     def save_parser_iteration(self, file_name, timestamp, response_status_code, new_jobs_count):
         self.cursor.execute("""
-            INSERT INTO parseriteration (parseriterationfile, timestamp, response_status_code, new_jobs_count)
+            INSERT INTO parseiteration (parseiterationfile, timestamp, response_status_code, new_jobs_count)
             VALUES (?, ?, ?, ?)
         """, (file_name, timestamp, response_status_code, new_jobs_count))
         self.connection.commit()
         return self.cursor.lastrowid
 
-    def save_jobs_to_database(self, jobs, parseriteration_id):
+    def save_jobs_to_database(self, jobs, parseiteration_id):
         new_jobs = 0
         for job in jobs:
             try:
@@ -83,7 +83,7 @@ class Database_urzadpracy:
                         wynagrodzenie, zakresObowiazkow, wymagania, stopienDopasowania, 
                         mapaGoogleUrl, mapaOsmUrl, telefon, email, liczbaWolnychMiejscDlaNiepeln, 
                         niepelnosprawni, dlaOsobZarej, typPropozycji, dodanePrzez, ikonyOferty, 
-                        popularnosc, parseriteration_id
+                        popularnosc, parseiteration_id
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
@@ -116,7 +116,7 @@ class Database_urzadpracy:
                     job.get("dodanePrzez"),
                     json.dumps(job.get("ikonyOferty", [])),
                     job.get("popularnosc"),
-                    parseriteration_id
+                    parseiteration_id
                 ))
                 new_jobs += 1
 
@@ -140,12 +140,12 @@ class Database_urzadpracy:
         self.connection.commit()
         return new_jobs
 
-    def update_count_of_new_vacancies_added(self, new_jobs_count, parseriteration_id):
+    def update_count_of_new_vacancies_added(self, new_jobs_count, parseiteration_id):
         self.cursor.execute("""
-            UPDATE parseriteration
+            UPDATE parseiteration
             SET new_jobs_count = ?
             WHERE id = ?
-        """, (new_jobs_count, parseriteration_id))
+        """, (new_jobs_count, parseiteration_id))
         self.connection.commit()
 
     def commit_and_close(self):
@@ -194,20 +194,20 @@ class Database_urzadpracy:
 #                 dodanePrzez TEXT,
 #                 ikonyOferty TEXT,
 #                 popularnosc TEXT,
-#                 parseriteration_id INTEGER,
+#                 parseiteration_id INTEGER,
 #                 job_latitude REAL,
 #                 job_longitude REAL,
 #                 job_country TEXT,
 #                 job_locality TEXT,
 #                 job_street TEXT,
 #                 job_building TEXT,
-#                 FOREIGN KEY (parseriteration_id) REFERENCES parseriteration (id)
+#                 FOREIGN KEY (parseiteration_id) REFERENCES parseiteration (id)
 #             )
 #         """)
 #         cursor.execute("""
-#             CREATE TABLE IF NOT EXISTS parseriteration (
+#             CREATE TABLE IF NOT EXISTS parseiteration (
 #                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-#                 parseriterationfile TEXT,
+#                 parseiterationfile TEXT,
 #                 timestamp TEXT,
 #                 new_jobs_count INTEGER,
 #                 response_status_code INTEGER
@@ -221,13 +221,13 @@ class Database_urzadpracy:
 #     with sqlite3.connect(database_filepath_str) as conn:
 #         cursor = conn.cursor()
 #         cursor.execute("""
-#             INSERT INTO parseriteration (parseriterationfile, timestamp, response_status_code, new_jobs_count)
+#             INSERT INTO parseiteration (parseiterationfile, timestamp, response_status_code, new_jobs_count)
 #             VALUES (?, ?, ?, ?)
 #         """, (file_name, timestamp, response_status_code, new_jobs_count))
 #         conn.commit()
 #         return cursor.lastrowid
 #
-# def save_jobs_to_database(database_filepath_str, jobs, parseriteration_id):
+# def save_jobs_to_database(database_filepath_str, jobs, parseiteration_id):
 #     with sqlite3.connect(database_filepath_str) as conn:
 #         cursor = conn.cursor()
 #         new_jobs = 0
@@ -241,7 +241,7 @@ class Database_urzadpracy:
 #                         wynagrodzenie, zakresObowiazkow, wymagania, stopienDopasowania,
 #                         mapaGoogleUrl, mapaOsmUrl, telefon, email, liczbaWolnychMiejscDlaNiepeln,
 #                         niepelnosprawni, dlaOsobZarej, typPropozycji, dodanePrzez, ikonyOferty,
-#                         popularnosc, parseriteration_id
+#                         popularnosc, parseiteration_id
 #                     )
 #                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 #                 """, (
@@ -274,7 +274,7 @@ class Database_urzadpracy:
 #                     job.get("dodanePrzez"),
 #                     json.dumps(job.get("ikonyOferty", [])),
 #                     job.get("popularnosc"),
-#                     parseriteration_id
+#                     parseiteration_id
 #                 ))
 #                 new_jobs += 1
 #
@@ -302,13 +302,13 @@ class Database_urzadpracy:
 #     return new_jobs
 #
 #
-# def update_count_of_new_vacancies_added(database_filepath, new_jobs_count, parseriteration_id):
-#     # Обновляем количество новых вакансий в таблице parseriteration
+# def update_count_of_new_vacancies_added(database_filepath, new_jobs_count, parseiteration_id):
+#     # Обновляем количество новых вакансий в таблице parseiteration
 #     with sqlite3.connect(database_filepath) as conn:
 #         cursor = conn.cursor()
 #         cursor.execute("""
-#                 UPDATE parseriteration
+#                 UPDATE parseiteration
 #                 SET new_jobs_count = ?
 #                 WHERE id = ?
-#             """, (new_jobs_count, parseriteration_id))
+#             """, (new_jobs_count, parseiteration_id))
 #         conn.commit()

@@ -1,15 +1,15 @@
-import sqlite3
+import sqlite3 
 import os
 from geopy.distance import geodesic
 from bin import settings
 
-PLATFORMNAME_str = "pracujpl_all"
+PLATFORMNAME_str = "urzadpracy"
 
-#FOLDERNAME_RESULTS_ALL = "data_results"
-#FILEPATH_DATABASE = os.path.join(FOLDERNAME_RESULTS_ALL, "pracujpl_jobs.sqlite")
+# FOLDERNAME_RESULTS_ALL = "data_results"
+# FILEPATH_DATABASE = os.path.join(settings.FOLDERNAME_RESULTS_ALL, "urzadpracy_jobs.sqlite")
 FILEPATH_DATABASE = settings.get_databasefilepath_fc(PLATFORMNAME_str)
 
-MAX_DISTANCE_AROUND_AREA_KM = 20
+MAX_DISTANCE_AROUND_AREA_KM = 6
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
 MAX_COUNT_OF_JOBS_FILTERED = 1000
 
@@ -18,6 +18,7 @@ CENTRALPOINT_COORDINATES_LON = 20.935230422848832
 
 # DEFAULT_COORDINATES_LAT = 52.2319581
 # DEFAULT_COORDINATES_LON = 21.0067249
+# coordinates that setting up if vacancy no have any coordinates geolocation
 DEFAULT_COORDINATES_LAT = CENTRALPOINT_COORDINATES_LAT
 DEFAULT_COORDINATES_LON = CENTRALPOINT_COORDINATES_LON
 
@@ -27,6 +28,7 @@ ALL_VACANCIES_COUNT_GOT = 0
 reference_point = (CENTRALPOINT_COORDINATES_LAT, CENTRALPOINT_COORDINATES_LON)
 
 # Функция для смещения координат
+# import random
 # def add_offset(latitude, longitude, index):
 #     offset = 0.0001 * index  # Индекс увеличивает смещение
 #     latitude += random.choice([-1, 1]) * offset
@@ -96,7 +98,7 @@ def add_offset_for_same_vacancies_coordinates(vacancies):
         else:
             # Если координаты новые, добавляем их в словарь
             seen_coords[(lat, lon)] = [list(vacancy_tuple)]
-
+        
     # вычисляем субкоординаты для повторяющихся координат
     for k, v in seen_coords.items():
         vacancy_list_list = v
@@ -106,7 +108,7 @@ def add_offset_for_same_vacancies_coordinates(vacancies):
             new_vacancies_lst_lst = generate_pin_offsets(vacancy_list_list)
         else:
             new_vacancies_lst_lst = [vacancy_list_list[0]]
-
+        
         # Добавляем пин с обновленными координатами
         for i in new_vacancies_lst_lst:
             processed_pins.append(i)
@@ -120,16 +122,21 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
         temp = list(vacancy)
         lat = temp[3]
         lon = temp[4]
-
+        
         if not lat or not lon:
             lat = DEFAULT_COORDINATES_LAT
             lon = DEFAULT_COORDINATES_LON
+
+        # Проверяем, актуальна ли дата вакансии
+        expiration_date = parse_date(temp[11])  # dataWaznDo
+        if expiration_date <= CURRENT_DATE:
+            continue  # Пропускаем вакансию, если она неактуальна
 
         #todo: set default coordinates for parsing script later
         if lat == 52.2053382 and lon == 21.0745384:
             lat = CENTRALPOINT_COORDINATES_LAT#52.2321841
             lon = CENTRALPOINT_COORDINATES_LON
-
+        
         vacancy_coords = (lat, lon)  # (latitude, longitude)
         distance = geodesic(reference_point, vacancy_coords).km
         if distance <= max_distance_km:
@@ -146,19 +153,25 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 
 
 # Подключаемся к базе данных
-conn = sqlite3.connect(FILEPATH_DATABASE)
+#conn = sqlite3.connect(FILEPATH_DATABASE)
+conn = sqlite3.connect(settings.get_databasefilepath_fc(PLATFORMNAME_str))
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
 from datetime import datetime
-current_date = datetime.utcnow().isoformat()  # Получаем текущую дату в формате "YYYY-MM-DDTHH:MM:SS"
-#cursor.execute(f'SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality, last_publicated FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
-cursor.execute("""SELECT id, job_title, salary, job_latitude, job_longitude, company_name, parseiteration_id, job_street, job_building, job_locality, last_publicated
-    FROM jobs 
-    WHERE expiration_date >= ? 
-    ORDER BY parseiteration_id DESC 
-    LIMIT ?""", (current_date, MAX_ALL_JOBS_COUNT_NOT_FILTERED)
-               )
+def parse_date(date_str):
+    return datetime.strptime(date_str, "%d.%m.%Y")
+# Получаем текущую дату
+CURRENT_DATE = datetime.now()
+
+cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseiteration_id, job_street, job_building, job_locality, dataDodaniaCbop, dataWaznDo FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}')
+# Извлекаем вакансии из базы данных, исключая те, у которых дата dataDodaniaCbop меньше текущей даты
+# cursor.execute(f'''SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca, parseiteration_id, job_street, job_building, job_locality, dataDodaniaCbop
+#     FROM jobs
+#     WHERE dataDodaniaCbop >= ?
+#     ORDER BY parseiteration_id DESC
+#     LIMIT {MAX_ALL_JOBS_COUNT_NOT_FILTERED}
+# ''', (current_date.strftime("%d.%m.%Y"),))
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий
@@ -347,10 +360,10 @@ def getcode_map_full2(vacancies):
                 }).addTo(map);
 
                 marker.bindPopup(
-                    '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
+                    '<b><h5 style="color:red"> Published: </b>' + vacancy.last_publicated + '</h5><br>' +
                     '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + vacancy.job_address_to_show + '<br><br>' +
                     '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
-                    '<a href="https://www.pracuj.pl/praca/,oferta,' + vacancy.id + '" target="_blank">Details...</a>'
+                    '<a href="https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/' + vacancy.id + '" target="_blank">Details...</a>'
                 );
 
                 markers.push({ marker, is_new: vacancy.is_new });
@@ -426,7 +439,7 @@ def extract_salary(text):
     if s:
         if not s:
             return 0
-
+        
         for c in s:
             if c not in "0123456789":
                 continue
@@ -436,13 +449,13 @@ def extract_salary(text):
 
 import json
 def getcode_vacanciesdata(vacancies):
-    max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+    max_parseiteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
     country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != 'None' or str(vacancy[9]) != None else ''}"
     middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != 'None' else ''}"
     street_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 7)
     building_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 8)
-
+    
     fulladdress_lambda = lambda vacancy: f"{country_beginningaddress_lambda(vacancy)}{street_middleaddress_lambda(vacancy)}{building_middleaddress_lambda(vacancy)}" if street_middleaddress_lambda(vacancy)  else ""
 
     vacancies_data = [
@@ -453,10 +466,9 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': vacancy[6] == max_parseriteration_id,  # True для новых вакансий
+            'is_new': vacancy[6] == max_parseiteration_id,  # True для новых вакансий
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': fulladdress_lambda(vacancy).replace(", None", ""),
-            #'last_publicated': datetime.strptime(str(vacancy[10]), "%Y-%m-%dT%H:%M:%SZ").strftime("%d-%m-%Y") if vacancy[10] else "N/A"  # Форматируем дату
             'last_publicated': str(vacancy[10]).split("T")[0] if vacancy[10] else "N/A"  # Добавляем дату публикации
         }
         for vacancy in vacancies
@@ -467,7 +479,7 @@ def getcode_vacanciesdata(vacancies):
 html_content = getcode_map_full2(vacancies)
 
 # Сохраняем HTML в файл
-#html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_pracujpl_map.html')
+#html_file_path = os.path.join(FOLDERNAME_RESULTS_ALL, 'vacancies_map.html')
 html_file_path = settings.get_htmlmapfilepath_fc(PLATFORMNAME_str)
 with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)

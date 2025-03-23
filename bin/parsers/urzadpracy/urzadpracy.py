@@ -62,13 +62,13 @@ class UrzadparcyParser(BaseParser):
 
             # Сохраняем информацию о запуске парсера
             file_name = settings.get_filenamefrompath(fp)
-            parseriteration_id = self.oDatabase.save_parser_iteration(file_name, self.current_timestamp_str, response_status_code, 0)
+            parseiteration_id = self.oDatabase.save_parser_iteration(file_name, self.current_timestamp_str, response_status_code, 0)
 
             # Сохраняем вакансии
-            new_jobs_count = self.oDatabase.save_jobs_to_database(jobs, parseriteration_id)
+            new_jobs_count = self.oDatabase.save_jobs_to_database(jobs, parseiteration_id)
 
-            # Обновляем количество новых вакансий в таблице parseriteration
-            self.oDatabase.update_count_of_new_vacancies_added(new_jobs_count, parseriteration_id)
+            # Обновляем количество новых вакансий в таблице parseiteration
+            self.oDatabase.update_count_of_new_vacancies_added(new_jobs_count, parseiteration_id)
 
             print(f"OK - Данные успешно обработаны. Добавлено новых вакансий: {new_jobs_count}")
         else:

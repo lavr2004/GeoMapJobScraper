@@ -28,7 +28,7 @@ conn = sqlite3.connect('jobs.db')
 cursor = conn.cursor()
 
 # Извлекаем вакансии из базы данных
-cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca FROM jobs ORDER BY parseriteration_id DESC LIMIT {MAX_COUNT_OF_JOBS}')
+cursor.execute(f'SELECT id, stanowisko, wynagrodzenie, job_latitude, job_longitude, pracodawca FROM jobs ORDER BY parseiteration_id DESC LIMIT {MAX_COUNT_OF_JOBS}')
 vacancies = cursor.fetchall()
 
 # Применяем фильтрацию к списку вакансий

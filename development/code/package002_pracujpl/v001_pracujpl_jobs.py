@@ -76,7 +76,7 @@ cursor.execute('''
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS parseiteration (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        parseriterationfile TEXT,
+        parseiterationfile TEXT,
         timestamp TEXT,
         new_jobs_count INTEGER,
         response_status_code INTEGER,
@@ -97,7 +97,7 @@ with open(parseiteraion_results_filepath, "w", encoding="utf-8") as fw:
 
 # Вставляем данные в таблицу parseiteration
 cursor.execute('''
-    INSERT INTO parseiteration (parseriterationfile, timestamp, new_jobs_count, response_status_code, url)
+    INSERT INTO parseiteration (parseiterationfile, timestamp, new_jobs_count, response_status_code, url)
     VALUES (?, ?, ?, ?, ?)
 ''', (parseiteraion_results_filename, current_timestamp, len(jobs), response_status_code, url))
 

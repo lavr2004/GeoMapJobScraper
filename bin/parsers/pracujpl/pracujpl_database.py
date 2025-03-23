@@ -44,7 +44,7 @@ class Database_pracujpl:
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS parseiteration (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                parseriterationfile TEXT,
+                parseiterationfile TEXT,
                 timestamp TEXT,
                 new_jobs_count INTEGER,
                 response_status_code INTEGER,
@@ -55,7 +55,7 @@ class Database_pracujpl:
     def step01_save_parseiteration_fc(self, parseiteraion_results_filename, current_timestamp, jobs_count, response_status_code, url):
         # Вставляем данные в таблицу parseiteration
         self.cursor.execute('''
-            INSERT INTO parseiteration (parseriterationfile, timestamp, new_jobs_count, response_status_code, url)
+            INSERT INTO parseiteration (parseiterationfile, timestamp, new_jobs_count, response_status_code, url)
             VALUES (?, ?, ?, ?, ?)
         ''', (parseiteraion_results_filename, current_timestamp, jobs_count, response_status_code, url))
 

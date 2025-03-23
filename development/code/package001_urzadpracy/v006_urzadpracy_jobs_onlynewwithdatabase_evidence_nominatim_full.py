@@ -78,20 +78,20 @@ def create_database():
                 dodanePrzez TEXT,
                 ikonyOferty TEXT,
                 popularnosc TEXT,
-                parseriteration_id INTEGER,
+                parseiteration_id INTEGER,
                 job_latitude REAL,
                 job_longitude REAL,
                 job_country TEXT,
                 job_locality TEXT,
                 job_street TEXT,
                 job_building TEXT,
-                FOREIGN KEY (parseriteration_id) REFERENCES parseriteration (id)
+                FOREIGN KEY (parseiteration_id) REFERENCES parseiteration (id)
             )
         """)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS parseriteration (
+            CREATE TABLE IF NOT EXISTS parseiteration (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                parseriterationfile TEXT,
+                parseiterationfile TEXT,
                 timestamp TEXT,
                 new_jobs_count INTEGER,
                 response_status_code INTEGER
@@ -176,13 +176,13 @@ def save_parser_iteration(file_name, timestamp, response_status_code, new_jobs_c
     with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO parseriteration (parseriterationfile, timestamp, response_status_code, new_jobs_count)
+            INSERT INTO parseiteration (parseiterationfile, timestamp, response_status_code, new_jobs_count)
             VALUES (?, ?, ?, ?)
         """, (file_name, timestamp, response_status_code, new_jobs_count))
         conn.commit()
         return cursor.lastrowid
 
-def save_jobs_to_database(jobs, parseriteration_id):
+def save_jobs_to_database(jobs, parseiteration_id):
     with sqlite3.connect(DATABASE_FILEPATH) as conn:
         cursor = conn.cursor()
         new_jobs = 0
@@ -196,7 +196,7 @@ def save_jobs_to_database(jobs, parseriteration_id):
                         wynagrodzenie, zakresObowiazkow, wymagania, stopienDopasowania, 
                         mapaGoogleUrl, mapaOsmUrl, telefon, email, liczbaWolnychMiejscDlaNiepeln, 
                         niepelnosprawni, dlaOsobZarej, typPropozycji, dodanePrzez, ikonyOferty, 
-                        popularnosc, parseriteration_id
+                        popularnosc, parseiteration_id
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
@@ -229,7 +229,7 @@ def save_jobs_to_database(jobs, parseriteration_id):
                     job.get("dodanePrzez"),
                     json.dumps(job.get("ikonyOferty", [])),
                     job.get("popularnosc"),
-                    parseriteration_id
+                    parseiteration_id
                 ))
                 new_jobs += 1
 
@@ -277,19 +277,19 @@ def main():
             json.dump(jobs, fw, ensure_ascii=False, indent=4)
 
         # Сохраняем информацию о запуске парсера
-        parseriteration_id = save_parser_iteration(file_name, timestamp, response.status_code, 0)
+        parseiteration_id = save_parser_iteration(file_name, timestamp, response.status_code, 0)
         
         # Сохраняем вакансии
-        new_jobs_count = save_jobs_to_database(jobs, parseriteration_id)
+        new_jobs_count = save_jobs_to_database(jobs, parseiteration_id)
 
-        # Обновляем количество новых вакансий в таблице parseriteration
+        # Обновляем количество новых вакансий в таблице parseiteration
         with sqlite3.connect(DATABASE_FILEPATH) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                UPDATE parseriteration
+                UPDATE parseiteration
                 SET new_jobs_count = ?
                 WHERE id = ?
-            """, (new_jobs_count, parseriteration_id))
+            """, (new_jobs_count, parseiteration_id))
             conn.commit()
 
         print(f"Данные успешно обработаны. Добавлено новых вакансий: {new_jobs_count}")
