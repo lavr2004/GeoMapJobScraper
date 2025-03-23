@@ -59,6 +59,37 @@ def get_htmlmapfilepath_fc(platformname_str):
 def get_dailyresultsfilepath_fc(platformname_str):
     return os.path.join(FOLDERPATH_DAILYDATA, get_dailyresultsfilename_fc(platformname_str))
 
+def update_filename_with_suffix(filename_str, suffix_str):
+    '''
+    file1.txt -> file1_suffix1.txt
+    '''
+    if not suffix_str:
+        return filename_str
+    filename_base, filename_ext = os.path.splitext(filename_str)
+    new_filename_str = f"{filename_base}{suffix_str}{filename_ext}"
+    return new_filename_str
+def update_filepath_with_suffix(filepath_str, suffix_str, to_update_old_filename_str = None):
+    '''
+    C:\folder1\file1.txt -> C:\folder1\file1_suffix1.txt
+    '''
+    if not suffix_str:
+        if to_update_old_filename_str:
+            # C:\folder1\file1.txt -> C:\folder1\newfilename1.txt
+            return os.path.join(os.path.dirname(filepath_str), to_update_old_filename_str)
+        else:
+            # C:\folder1\file1.txt -> C:\folder1\file1.txt
+            return filepath_str
+
+    if not to_update_old_filename_str:
+        # file1.txt -> newfilename1_suffix1.txt
+        filename_str = os.path.basename(filepath_str)
+        new_filename_str = update_filename_with_suffix(filename_str, suffix_str)
+    else:
+        # file1.txt -> file1_suffix1.txt
+        new_filename_str = update_filename_with_suffix(to_update_old_filename_str, suffix_str)
+    return os.path.join(os.path.dirname(filepath_str), new_filename_str)
+
+
 # OTHER
 
 def get_timestamp():

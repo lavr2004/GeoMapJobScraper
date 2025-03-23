@@ -15,13 +15,28 @@ class BaseParser:
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     }
 
+    backuped_original_results_filename_str = ""
+
     def __init__(self, platformname_str, url_start_str):
         self.PLATFORMNAME_STR = platformname_str
         self.URL_START_STR = url_start_str
         self.database_filepath_str = settings.get_databasefilepath_fc(self.PLATFORMNAME_STR)
         self.results_filepath_str = settings.get_dailyresultsfilepath_fc(self.PLATFORMNAME_STR)
         self.results_filename_str = settings.get_filenamefrompath(self.results_filepath_str)
+        self.backuped_original_results_filename_str = self.results_filename_str
         self.current_timestamp_str = settings.get_timestamp()
+
+    def update_results_filepath_fc(self, pagenumber_int = None, filterslist_lst = None):
+        suffix_str = ""
+        if pagenumber_int:
+            suffix_str += f"_{pagenumber_int}"
+        if filterslist_lst:
+            for i in filterslist_lst:
+                if i:
+                    suffix_str += f"_{i}"
+
+        self.results_filename_str = settings.update_filename_with_suffix(self.backuped_original_results_filename_str, suffix_str)
+        self.results_filepath_str = settings.update_filepath_with_suffix(self.results_filepath_str, suffix_str, self.backuped_original_results_filename_str)
 
     def _fetch_html(self, pagenumber_int = None) -> (str ,int):
         '''
