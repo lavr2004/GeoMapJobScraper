@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 import json
 from bin import settings
 
-PLATFORMNAME_str = "pracujpl_all"
+PLATFORMNAME_str = "combined_jobs"
 FILEPATH_DATABASE = os.path.join(settings.FOLDERPATH_RESULTS_ALL, "combined_jobs.sqlite")
 
-MAX_DISTANCE_AROUND_AREA_KM = 20
+MAX_DISTANCE_AROUND_AREA_KM = 15
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
 MAX_COUNT_OF_JOBS_FILTERED = 1000
 
@@ -112,9 +112,9 @@ if len(vacancies) > MAX_COUNT_OF_JOBS_FILTERED:
     vacancies = vacancies[:MAX_COUNT_OF_JOBS_FILTERED]
 
 # Определяем минимальную и максимальную даты парсинга для календаря
-min_date = min(vacancy[10].replace('_', '')[:8] for vacancy in vacancies if vacancy[10])  # Преобразуем в YYYYMMDD
+min_date = min(vacancy[10].replace('_', '')[:8] for vacancy in vacancies if vacancy[10])
 max_date = max(vacancy[10].replace('_', '')[:8] for vacancy in vacancies if vacancy[10])
-min_date_formatted = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"  # YYYY-MM-DD
+min_date_formatted = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"
 max_date_formatted = f"{max_date[:4]}-{max_date[4:6]}-{max_date[6:8]}"
 
 conn.close()
@@ -133,6 +133,14 @@ def extract_salary(text):
 
 def getcode_vacanciesdata(vacancies):
     max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+
+    def get_details_url(source, vacancy_id):
+        if 'jobs_urzadpracy.sqlite' in source:
+            return f"https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/{vacancy_id}"
+        elif 'jobs_pracujpl' in source:  # Подходит для jobs_pracujpl.sqlite и jobs_pracujpl_all.sqlite
+            return f"https://www.pracuj.pl/praca/,oferta,{vacancy_id}"
+        return "#"  # По умолчанию, если источник неизвестен
+
     vacancies_data = [
         {
             'id': vacancy[0],
@@ -146,7 +154,8 @@ def getcode_vacanciesdata(vacancies):
             'job_address_to_show': str(vacancy[7]) if vacancy[7] else "",
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
             'source': str(vacancy[9]),
-            'date_parsing': str(vacancy[10])  # Добавляем date_parsing
+            'date_parsing': str(vacancy[10]),
+            'details_url': get_details_url(str(vacancy[9]), vacancy[0])  # Новое поле с динамической ссылкой
         }
         for vacancy in vacancies
     ]
@@ -329,7 +338,7 @@ def getcode_map_full2(vacancies):
                 const search = searchText.toLowerCase();
                 const exclude = excludeText.toLowerCase();
                 const source = vacancy.source;
-                const parseDate = vacancy.date_parsing.replace('_', '').slice(0, 8); // YYYYMMDD
+                const parseDate = vacancy.date_parsing.replace('_', '').slice(0, 8);
 
                 const dateFromFormatted = dateFrom.replace(/-/g, '');
                 const dateToFormatted = dateTo.replace(/-/g, '');
@@ -359,7 +368,7 @@ def getcode_map_full2(vacancies):
                         vacancy.job_address_to_show + '<br><br>' +
                         '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
                         '<b>Source: </b>' + vacancy.source + '<br>' +
-                        '<a href="https://www.pracuj.pl/praca/,oferta,' + vacancy.id + '" target="_blank">Details...</a>'
+                        '<a href="' + vacancy.details_url + '" target="_blank">Details...</a>'
                     );
 
                     markers.push({{ marker, is_new: vacancy.is_new }});
