@@ -1,3 +1,5 @@
+import logging
+
 import bin.logic.parser
 import bin.logic.web
 import bin.logic.filesystem
@@ -17,10 +19,14 @@ class BaseParser:
 
     backuped_original_results_filename_str = ""
 
-    def __init__(self, platformname_str, url_start_str):
+    logger_obj: logging.Logger = None
+
+    def __init__(self, platformname_str, url_start_str, logger_obj: logging.Logger):
+        self.logger_obj = logger_obj
         self.PLATFORMNAME_STR = platformname_str
         self.URL_START_STR = url_start_str
         self.database_filepath_str = settings.get_databasefilepath_fc(self.PLATFORMNAME_STR)
+        self.logger_obj.info(f"OK - parser {self.PLATFORMNAME_STR} operating on database {self.database_filepath_str}")
         self.results_filepath_str = settings.get_dailyresultsfilepath_fc(self.PLATFORMNAME_STR)
         self.results_filename_str = settings.get_filenamefrompath(self.results_filepath_str)
         self.backuped_original_results_filename_str = self.results_filename_str
@@ -52,16 +58,20 @@ class BaseParser:
             'pn': f'{pagenumber_int}',
         }
         pause_seconds_int = random.randint(3, 7)
-        print(f"OK: Technical pause between requests - {pause_seconds_int} seconds")
+        self.logger_obj.info(f"OK: Technical pause between requests - {pause_seconds_int} seconds")
         time.sleep(pause_seconds_int)
         return bin.logic.web.get_html_response_from_url(self.URL_START_STR, headers_dc=self.HEADERS, params_dc=params, cookies_dc=cookies)
 
     def parse(self, pagenumber_int=0) -> None:
         '''dont return nothing, just write collected data into the database'''
-        raise NotImplementedError("Subclasses must implement the 'parse' method")
+        ermsg_str = "ER - Subclasses must implement the 'parse' method"
+        self.logger_obj.error(ermsg_str)
+        raise NotImplementedError(ermsg_str)
 
     def update_coordinates(self) -> None:
-        raise NotImplementedError("Subclasses must implement the 'update_coordinates' method")
+        ermsg_str = "ER - Subclasses must implement the 'update_coordinates' method"
+        self.logger_obj.error(ermsg_str)
+        raise NotImplementedError(ermsg_str)
 
     # def commit_changes(self) -> None:
     #     self.oDatabase.step05_commit_things()

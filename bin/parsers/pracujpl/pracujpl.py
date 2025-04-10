@@ -1,3 +1,5 @@
+import logging
+
 import bin.logic.parser
 import bin.logic.web
 import bin.logic.filesystem
@@ -13,8 +15,8 @@ import time
 
 
 class PracujPLParser(BaseParser):
-    def __init__(self):
-        super().__init__(platformname_str="pracujpl", url_start_str='https://www.pracuj.pl/praca/warszawa;kw')
+    def __init__(self, mylogger: logging.Logger):
+        super().__init__(platformname_str="pracujpl", url_start_str='https://www.pracuj.pl/praca/warszawa;kw', logger_obj=mylogger)
         self.oDatabase = Database_pracujpl(self.database_filepath_str)
 
     def _fetch_html(self, pagenumber_int=None):
@@ -109,7 +111,7 @@ class PracujPLParser(BaseParser):
         # params.update({"sc": sortoptions}) if sortoptions else None
         # params.update({"rd": radiuskm}) if radiuskm else None
         pause_seconds_int = random.randint(3, 7)
-        print(f"OK: Technical pause between requests to pracuj.pl - {pause_seconds_int} seconds")
+        self.logger_obj.info(f"OK: Technical pause between requests to pracuj.pl - {pause_seconds_int} seconds")
         time.sleep(pause_seconds_int)
         return bin.logic.web.get_html_response_from_url(self.URL_START_STR, headers_dc=headers, params_dc=params, cookies_dc=cookies)
 
@@ -129,11 +131,11 @@ class PracujPLParser(BaseParser):
         self.oDatabase.step02_save_joboffers_fc(jobs, parse_address_in_warsaw_from_url_fc)
 
         if pagenumber_int:
-            print(f"OK: Data from page {pagenumber_int} successfully saved in database {self.database_filepath_str}")
+            self.logger_obj.info(f"OK: Data from page {pagenumber_int} successfully saved in database {self.database_filepath_str}")
         else:
-            print(f"OK: Data successfully saved in database {self.database_filepath_str}")
+            self.logger_obj.info(f"OK: Data successfully saved in database {self.database_filepath_str}")
 
-        print(response_status_code)
+            self.logger_obj.info(response_status_code)
 
     def update_coordinates(self) -> None:
         jobs = self.oDatabase.step03_get_lastaddedvacancies_from_database_fc()
@@ -148,11 +150,13 @@ class PracujPLParser(BaseParser):
                 self.oDatabase.step04_update_geocoordinatest_fc(latitude, longitude, job_id)
 
                 if latitude and longitude:
-                    print(f"Coordinates for job ID {job_id} updated: {latitude}, {longitude}")
+                    self.logger_obj.info(f"Coordinates for job ID {job_id} updated: {latitude}, {longitude}")
                 else:
-                    print(f"Failed to get coordinates for job ID {job_id} (address: {address})")
+                    self.logger_obj.warning(f"Failed to get coordinates for job ID {job_id} (address: {address})")
             else:
-                print(f"No address for job ID {job_id}")
+                self.logger_obj.warning(f"No address for job ID {job_id}")
+
+        self.logger_obj.info("OK: Coordinate update completed.")
 
     def commit_changes(self):
         self.oDatabase.step05_commit_things()
@@ -170,7 +174,6 @@ if __name__ == "__main__":
 
     # Commit changes to the database
     parser.commit_changes()
-    print("OK: Coordinate update completed.")
 
 
 

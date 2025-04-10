@@ -1,3 +1,5 @@
+import logging
+
 import bin.logic.parser
 import bin.logic.web
 import bin.logic.filesystem
@@ -69,8 +71,8 @@ response = requests.get('https://www.pracuj.pl/praca/warszawa;wp', params=params
 
 
 class PracujPLAllWarszawaParser(BaseParser):
-    def __init__(self):
-        super().__init__(platformname_str="pracujpl_all", url_start_str='https://www.pracuj.pl/praca/warszawa;wp')
+    def __init__(self, mylogger: logging.Logger):
+        super().__init__(platformname_str="pracujpl_all", url_start_str='https://www.pracuj.pl/praca/warszawa;wp', logger_obj=mylogger)
         self.oDatabase = Database_pracujpl(self.database_filepath_str)
 
     def _fetch_html(self, pagenumber_int=1):
@@ -135,7 +137,7 @@ class PracujPLAllWarszawaParser(BaseParser):
         # params.update({"sc": sortoptions}) if sortoptions else None
         # params.update({"rd": radiuskm}) if radiuskm else None
         pause_seconds_int = random.randint(3, 7)
-        print(f"OK: Technical pause between requests to pracuj.pl - {pause_seconds_int} seconds")
+        self.logger_obj.info(f"OK: Technical pause between requests to pracuj.pl - {pause_seconds_int} seconds")
         time.sleep(pause_seconds_int)
         return bin.logic.web.get_html_response_from_url(self.URL_START_STR, headers_dc=headers, params_dc=params, cookies_dc=cookies)
 
@@ -151,11 +153,13 @@ class PracujPLAllWarszawaParser(BaseParser):
             json_data = bin.parsers.pracujpl.pracujpl_parser.recognition_JSON_in_HTML_area_fc(html_content)
             jobs_dc = bin.logic.parser.recursive_json_search_fc(json_data, "groupedOffers")
             if not jobs_dc:
-                print(f"ER - not parsed jobs from page: {i}. Breaking requests to pracuj.pl Warszawa")
+                self.logger_obj.error(f"ER - not parsed jobs from page: {i}. Breaking requests to pracuj.pl Warszawa")
                 break
 
-            jobs_collected_count += len(jobs_dc)
+            parsed_jobs_count = len(jobs_dc)
+            jobs_collected_count += parsed_jobs_count
             j = i
+            self.logger_obj.info(f"OK - parsed {parsed_jobs_count} jobs from page {i}")
 
             # Save JSON copy
             self.update_results_filepath_fc(pagenumber_int=i)
@@ -167,11 +171,11 @@ class PracujPLAllWarszawaParser(BaseParser):
             self.oDatabase.step02_save_joboffers_fc(jobs_dc, parse_address_in_warsaw_from_url_fc)
 
             if i:
-                print(f"OK: {response_status_code}: Data from page {i} successfully saved in database {self.database_filepath_str}")
+                self.logger_obj.info(f"OK: {response_status_code}: Data from page {i} successfully saved in database {self.database_filepath_str}")
             else:
-                print(f"OK: {response_status_code}: Data successfully saved in database {self.database_filepath_str}")
+                self.logger_obj.info(f"OK: {response_status_code}: Data successfully saved in database {self.database_filepath_str}")
 
-        print(f"OK: Collected jobs count - {jobs_collected_count}. Parsing from {self.URL_START_STR} finished on page {j}")
+        self.logger_obj.info(f"OK: Collected jobs count - {jobs_collected_count}. Parsing from {self.URL_START_STR} finished on page {j}")
 
     def update_coordinates(self) -> None:
         jobs = self.oDatabase.step03_get_lastaddedvacancies_from_database_fc()
@@ -186,11 +190,13 @@ class PracujPLAllWarszawaParser(BaseParser):
                 self.oDatabase.step04_update_geocoordinatest_fc(latitude, longitude, job_id)
 
                 if latitude and longitude:
-                    print(f"Coordinates for job ID {job_id} updated: {latitude}, {longitude}")
+                    self.logger_obj.info(f"Coordinates for job ID {job_id} updated: {latitude}, {longitude}")
                 else:
-                    print(f"Failed to get coordinates for job ID {job_id} (address: {address})")
+                    self.logger_obj.warning(f"Failed to get coordinates for job ID {job_id} (address: {address})")
             else:
-                print(f"No address for job ID {job_id}")
+                self.logger_obj.warning(f"No address for job ID {job_id}")
+
+        self.logger_obj.info("OK - getting coordinates process finished")
 
     def commit_changes(self):
         self.oDatabase.step05_commit_things()
@@ -208,7 +214,6 @@ if __name__ == "__main__":
 
     # Commit changes to the database
     parser.commit_changes()
-    print("OK: Coordinate update completed.")
 
 
 

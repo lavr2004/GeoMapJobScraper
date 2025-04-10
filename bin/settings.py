@@ -25,18 +25,47 @@ NOMINATIM_PUBLIC_API_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_URL = NOMINATIM_PUBLIC_API_URL if NOMINATIM_IS_USE_PUBLIC_API else NOMINATIM_PRIVATE_API_URL# Nominatim api server address
 NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = 3
 
-# SETTINGS LOGGING
+# =============================================================================
+# SETTINGS LOGGING START
+# =============================================================================
 FOLDERNAME_LOGS = "logs"
-LOG_FILEPATH = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_LOGS)
+LOGS_DIR = os.path.join(FOLDERPATH_RESULTS_ALL, FOLDERNAME_LOGS)
+MAX_LOG_FILES = 10
 
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Формируем имя лог-файла по текущей дате и времени
+timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = f"log_{timestamp_str}.txt"
+LOG_FILEPATH = os.path.join(LOGS_DIR, log_filename)
+
+# Удаляем старые логи, если файлов больше MAX_LOG_FILES
+log_files = sorted(
+    [f for f in os.listdir(LOGS_DIR) if f.startswith("log_") and f.endswith(".txt")],
+    key=lambda f: os.path.getmtime(os.path.join(LOGS_DIR, f))
+)
+while len(log_files) >= MAX_LOG_FILES:
+    oldest_file = log_files.pop(0)
+    os.remove(os.path.join(LOGS_DIR, oldest_file))
+
+
+# Настройка логгера
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] - %(message)s',
     handlers=[
-        logging.FileHandler(LOG_FILEPATH),
+        logging.FileHandler(LOG_FILEPATH, encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
+
+def get_logger_fc(name_str: str = None) -> logging.Logger:
+    return logging.getLogger(name_str) if name_str else logging.getLogger()
+
+# =============================================================================
+# SETTINGS LOGGING FINISH
+# =============================================================================
+
 
 # GET FILENAMES OUTPUT
 def get_databasefilename_fc(platformname_str = "pracujpl"):

@@ -25,9 +25,9 @@ NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS = settings.NOMINATIM_PAUSE_IF_PUBLIC_API_S
 import bin.parsers.urzadpracy.urzadpracy_database
 
 class UrzadparcyParser(BaseParser):
-    def __init__(self):
-        super().__init__(platformname_str="urzadpracy", url_start_str=f"https://oferty.praca.gov.pl/portal-api/v3/oferta/wyszukiwanie?page=0&size={COUNT_OF_JOBS_TO_REQUEST}&sort=dataDodania,desc")
-        self.oDatabase = Database_urzadpracy(self.database_filepath_str)
+    def __init__(self, mylogger):
+        super().__init__(platformname_str="urzadpracy", url_start_str=f"https://oferty.praca.gov.pl/portal-api/v3/oferta/wyszukiwanie?page=0&size={COUNT_OF_JOBS_TO_REQUEST}&sort=dataDodania,desc", logger_obj = mylogger)
+        self.oDatabase = Database_urzadpracy(self.database_filepath_str, mylogger)
         self.oDatabase.create_database()
 
     def _fetch_html(self, pagenumber_int=None):
@@ -42,7 +42,8 @@ class UrzadparcyParser(BaseParser):
             "kodyPocztoweId": ["01-107"],
         }
         pause_seconds_int = random.randint(3, 7)
-        print(f"OK: Technical pause between requests to {self.PLATFORMNAME_STR} - {pause_seconds_int} seconds")
+        #print(f"OK: Technical pause between requests to {self.PLATFORMNAME_STR} - {pause_seconds_int} seconds")
+        self.logger_obj.info(f"OK: Technical pause between requests to {self.PLATFORMNAME_STR} - {pause_seconds_int} seconds")
         time.sleep(pause_seconds_int)
         return bin.logic.web.get_json_response_from_url(self.URL_START_STR, json_dc=json_post, headers_dc=headers, request_type_str="POST")
 
@@ -70,10 +71,12 @@ class UrzadparcyParser(BaseParser):
             # Обновляем количество новых вакансий в таблице parseiteration
             self.oDatabase.update_count_of_new_vacancies_added(new_jobs_count, parseiteration_id)
 
-            print(f"OK - Данные успешно обработаны. Добавлено новых вакансий: {new_jobs_count}")
+            self.logger_obj.info(f"OK - Data processed successfully. Count of new vacancies added: {new_jobs_count}")
         else:
-            print(f"ER - Ошибка запроса: {response_status_code}")
+            self.logger_obj.info(f"ER - Request error: {response_status_code}")
             self.oDatabase.save_parser_iteration("", self.current_timestamp_str, response_status_code, 0)
+
+        self.logger_obj.info("OK - data parsing finished")
 
     def update_coordinates(self) -> None:
         pass
@@ -96,4 +99,3 @@ if __name__ == "__main__":
 
     # Commit changes to the database
     parser.commit_changes()
-    print("OK: Data parsed")

@@ -9,8 +9,8 @@ PLATFORMNAME_str = "combined_jobs"
 FILEPATH_DATABASE = os.path.join(settings.FOLDERPATH_RESULTS_ALL, "combined_jobs.sqlite")
 
 MAX_DISTANCE_AROUND_AREA_KM = 15
-MAX_ALL_JOBS_COUNT_NOT_FILTERED = 1000
-MAX_COUNT_OF_JOBS_FILTERED = 1000
+MAX_ALL_JOBS_COUNT_NOT_FILTERED = 10000
+MAX_COUNT_OF_JOBS_FILTERED = 10000
 
 CENTRALPOINT_COORDINATES_LAT = 52.2321841
 CENTRALPOINT_COORDINATES_LON = 20.935230422848832
@@ -90,8 +90,9 @@ def filter_vacancies(vacancies, reference_point, max_distance_km=3):
 conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
-# Извлекаем вакансии не старше 3 недель по date_parsing
-three_weeks_ago = (datetime.utcnow() - timedelta(days=21)).strftime('%Y%m%d_%H%M%S')
+# Извлекаем вакансии не старше 2 недель по date_parsing
+# three_weeks_ago = (datetime.utcnow() - timedelta(days=14)).strftime('%Y%m%d_%H%M%S')
+three_weeks_ago = (datetime.utcnow() - timedelta(days=14)).strftime('%Y%m%d_%H%M%S')
 cursor.execute("""
     SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_added, source, date_parsing
     FROM jobs 

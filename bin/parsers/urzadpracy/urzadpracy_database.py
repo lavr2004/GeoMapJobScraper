@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 import json
 
@@ -5,7 +6,11 @@ import bin.parsers.urzadpracy.urzadpracy_parser
 
 
 class Database_urzadpracy:
-    def __init__(self, database_filepath):
+    logger_obj: logging.Logger = None
+    database_filepath_str = None
+    def __init__(self, database_filepath, mylogger: logging.Logger):
+        self.logger_obj = mylogger
+        self.database_filepath_str = database_filepath
         self.connection = sqlite3.connect(database_filepath)
         self.cursor = self.connection.cursor()
 
@@ -69,6 +74,7 @@ class Database_urzadpracy:
             VALUES (?, ?, ?, ?)
         """, (file_name, timestamp, response_status_code, new_jobs_count))
         self.connection.commit()
+        self.logger_obj.info(f"OK - parseriteration from {timestamp} with response code {response_status_code} and jobs count {new_jobs_count} saved")
         return self.cursor.lastrowid
 
     def save_jobs_to_database(self, jobs, parseiteration_id):
@@ -135,8 +141,9 @@ class Database_urzadpracy:
                         geo_data["job_building"],
                         job["id"]
                     ))
-            except sqlite3.IntegrityError:
-                continue
+            except sqlite3.IntegrityError as e:
+                self.logger_obj.error(f"ER - error with integrity: {e}")
+        self.logger_obj.info(f"OK - {new_jobs} new jobs added into the database {self.database_filepath_str}")
         self.connection.commit()
         return new_jobs
 
@@ -146,6 +153,7 @@ class Database_urzadpracy:
             SET new_jobs_count = ?
             WHERE id = ?
         """, (new_jobs_count, parseiteration_id))
+        self.logger_obj.info(f"OK - parseiteration table record with id {parseiteration_id} updated new_jobs_count field with value {new_jobs_count}")
         self.connection.commit()
 
     def commit_and_close(self):
