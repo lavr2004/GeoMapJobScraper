@@ -3,6 +3,7 @@ import sys
 import time
 
 DOCKER_CONTAINER_NAME = "nominatim"
+TECHNICAL_PAUSE_AFTER_LAUNCH_SECONDS = 60
 
 def log_ok(message):
     print(f"OK - {message}")
@@ -76,5 +77,11 @@ def main():
         else:
             log_error(f"Container '{DOCKER_CONTAINER_NAME}' not found. Make sure it is created.")
             sys.exit(1)
+
+        global TECHNICAL_PAUSE_AFTER_LAUNCH_SECONDS
+        while TECHNICAL_PAUSE_AFTER_LAUNCH_SECONDS > 0:
+            time.sleep(1)
+            log_ok(f"wait for {TECHNICAL_PAUSE_AFTER_LAUNCH_SECONDS} after launch docker container technical pause")
+            TECHNICAL_PAUSE_AFTER_LAUNCH_SECONDS -= 1
 
     log_ok("Docker and Nominatim container are ready. Starting the parser...")
