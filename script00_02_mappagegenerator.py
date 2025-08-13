@@ -8,12 +8,12 @@ from bin import settings
 PLATFORMNAME_str = "combined_jobs"
 FILEPATH_DATABASE = os.path.join(settings.FOLDERPATH_RESULTS_ALL, "combined_jobs.sqlite")
 
-MAX_DISTANCE_AROUND_AREA_KM = 15
+MAX_DISTANCE_AROUND_AREA_KM = 30
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 10000
 MAX_COUNT_OF_JOBS_FILTERED = 10000
 
-CENTRALPOINT_COORDINATES_LAT = 52.2321841
-CENTRALPOINT_COORDINATES_LON = 20.935230422848832
+CENTRALPOINT_COORDINATES_LAT = 52.2297  # Центр Варшавы
+CENTRALPOINT_COORDINATES_LON = 21.0122  # Центр Варшавы
 DEFAULT_COORDINATES_LAT = CENTRALPOINT_COORDINATES_LAT
 DEFAULT_COORDINATES_LON = CENTRALPOINT_COORDINATES_LON
 
@@ -132,7 +132,9 @@ def extract_salary(text):
     return int(r) if r else 0
 
 def getcode_vacanciesdata(vacancies):
-    max_parseriteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
+    # UPDATED: 202508131940_centerpin: UPDATED
+    # Определяем текущую дату для сравнения с date_added
+    current_date = datetime.utcnow().strftime('%Y-%m-%d')
 
     def get_details_url(source, vacancy_id):
         if 'jobs_urzadpracy.sqlite' in source:
@@ -149,7 +151,7 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': vacancy[6] == max_parseriteration_id,
+            'is_new': str(vacancy[8]).split("T")[0] == current_date if vacancy[8] else False,  # Проверка на текущую дату
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': str(vacancy[7]) if vacancy[7] else "",
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
@@ -160,6 +162,7 @@ def getcode_vacanciesdata(vacancies):
         for vacancy in vacancies
     ]
     return json.dumps(vacancies_data, ensure_ascii=False)
+    # UPDATED: 202508131940_centerpin: UPDATED
 
 def getcode_map_full2(vacancies):
     centerpoint_coords_list_str = f"[{CENTRALPOINT_COORDINATES_LAT}, {CENTRALPOINT_COORDINATES_LON}]"
@@ -245,7 +248,6 @@ def getcode_map_full2(vacancies):
                 border-radius: 50%;
                 cursor: pointer;
             }}
-            
             #tag-container {{
                 display: flex;
                 flex-wrap: wrap;
@@ -273,6 +275,9 @@ def getcode_map_full2(vacancies):
             }}
             .tag-close:hover {{
                 color: #ff0000;
+            }}
+            .set-radius-cursor {{
+                cursor: url('https://icons.iconarchive.com/icons/papirus-team/papirus-apps/32/pingus-icon-icon.png') 16 32, auto;
             }}
         </style>
     </head>
@@ -320,16 +325,20 @@ def getcode_map_full2(vacancies):
                         </div>
                         <div class="mb-3">
                             <label class="slider-label" for="radius-slider">Search Radius (km):</label>
-                            <input id="radius-slider" class="slider" type="range" min="1" max="{MAX_DISTANCE_AROUND_AREA_KM}" step="1" value="{MAX_DISTANCE_AROUND_AREA_KM}">
+                            
+                            <div class="input-group">
+                                <input id="radius-slider" class="slider" type="range" min="1" max="{MAX_DISTANCE_AROUND_AREA_KM}" step="1" value="{MAX_DISTANCE_AROUND_AREA_KM}">
+                            </div>
                             <span id="radius-value">{MAX_DISTANCE_AROUND_AREA_KM} km</span>
                         </div>
                         <div>
                             <h2>Legend:</h2>
-                            <p><span style="color:red;">●</span> New Vacancies</p>
-                            <p><span style="color:blue;">●</span> Old Vacancies</p>
+                            <p><span style="color:red;">●</span> New Vacancies (Published Today)</p>
+                            <p><span style="color:blue;">●</span> Older Vacancies</p>
                             <button class="btn btn-primary me-2" onclick="filterMarkers('new')">New</button>
                             <button class="btn btn-secondary me-2" onclick="filterMarkers('old')">Old</button>
                             <button class="btn btn-success" onclick="filterMarkers('all')">All</button>
+                            <button class="btn btn-primary" id="set-radius-btn"><i class="bi bi-geo-alt-fill"></i> Set Radius Point</button>
                         </div>
                     </div>
                 </div>
@@ -352,12 +361,15 @@ def getcode_map_full2(vacancies):
         }});
 
         let markers = [];
+        let centerCoords = {centerpoint_coords_list_str};
+        let binocularMarker = null;
         const radiusCircle = L.circle({centerpoint_coords_list_str}, {{
             radius: {MAX_DISTANCE_AROUND_AREA_KM}000,
             color: 'blue',
             fillColor: 'blue',
             fillOpacity: 0.1
         }}).addTo(map);
+        let setRadiusMode = false;
 
         let searchTags = [];
         let activeTags = new Set();
@@ -367,19 +379,57 @@ def getcode_map_full2(vacancies):
         function saveToLocalStorage() {{
             localStorage.setItem(storageKey, JSON.stringify({{
                 searchTags: searchTags,
-                activeTags: Array.from(activeTags)
+                activeTags: Array.from(activeTags),
+                centerCoords: centerCoords
             }}));
         }}
 
         function loadFromLocalStorage() {{
             const savedData = localStorage.getItem(storageKey);
             if (savedData) {{
-                const {{ searchTags: savedTags, activeTags: savedActive }} = JSON.parse(savedData);
+                const {{ searchTags: savedTags, activeTags: savedActive, centerCoords: savedCoords }} = JSON.parse(savedData);
                 searchTags = savedTags.slice(-maxTags);
                 activeTags = new Set(savedActive);
+                centerCoords = savedCoords || {centerpoint_coords_list_str};
+                updateCenterMarker();
                 renderTags();
                 updateFilters();
             }}
+        }}
+
+        function updateCenterMarker() {{
+            if (binocularMarker) {{
+                map.removeLayer(binocularMarker);
+            }}
+            binocularMarker = L.marker(centerCoords, {{ 
+                icon: binocularIcon, 
+                draggable: false,
+                zIndexOffset: 1000  // Высокий zIndex для отображения поверх других маркеров
+            }})
+                .addTo(map)
+                .bindPopup('<div class="animate__animated animate__bounce"><b>Here we start! :)</b><br>Search area center</div>')
+                .openPopup();
+            radiusCircle.setLatLng(centerCoords);
+        }}
+        function toggleSetRadiusMode() {{
+            setRadiusMode = !setRadiusMode;
+            const setRadiusBtn = document.getElementById('set-radius-btn');
+            setRadiusBtn.classList.toggle('active', setRadiusMode);
+            if (setRadiusMode) {{
+                document.getElementById('map').classList.add('set-radius-cursor');
+                map.on('click', onMapClick);
+            }} else {{
+                document.getElementById('map').classList.remove('set-radius-cursor');
+                map.off('click', onMapClick);
+            }}
+        }}
+
+        function onMapClick(e) {{
+            centerCoords = [e.latlng.lat, e.latlng.lng];
+            updateCenterMarker();
+            saveToLocalStorage();
+            updateFilters();
+            toggleSetRadiusMode(); // Отключаем режим после клика
         }}
 
         function addTag(text) {{
@@ -443,7 +493,7 @@ def getcode_map_full2(vacancies):
             vacancies.forEach(vacancy => {{
                 const markerColor = vacancy.is_new ? 'red' : 'blue';
                 const salary = vacancy.salary;
-                const distance = map.distance([vacancy.latitude, vacancy.longitude], {centerpoint_coords_list_str});
+                const distance = map.distance([vacancy.latitude, vacancy.longitude], centerCoords);
                 const title = vacancy.title.toLowerCase();
                 const search = searchText.toLowerCase();
                 const exclude = excludeText.toLowerCase();
@@ -494,10 +544,7 @@ def getcode_map_full2(vacancies):
                 }}
             }});
 
-            L.marker({centerpoint_coords_list_str}, {{ icon: binocularIcon }})
-                .addTo(map)
-                .bindPopup('<div class="animate__animated animate__bounce"><b>Here we start! :)</b><br>Search area center</div>')
-                .openPopup();
+            updateCenterMarker();
         }}
 
         function filterMarkers(type) {{
@@ -510,6 +557,7 @@ def getcode_map_full2(vacancies):
 
         function updateCircleRadius(radius) {{
             radiusCircle.setRadius(radius);
+            radiusCircle.setLatLng(centerCoords);
         }}
 
         function updateFilters() {{
@@ -549,6 +597,7 @@ def getcode_map_full2(vacancies):
         document.getElementById('source-select').addEventListener('change', updateFilters);
         document.getElementById('date-from').addEventListener('change', updateFilters);
         document.getElementById('date-to').addEventListener('change', updateFilters);
+        document.getElementById('set-radius-btn').addEventListener('click', toggleSetRadiusMode);
 
         const filterPanel = document.getElementById('filterPanel');
         const toggleBtn = document.getElementById('toggleBtn');
