@@ -91,7 +91,6 @@ conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии не старше 2 недель по date_parsing
-# three_weeks_ago = (datetime.utcnow() - timedelta(days=14)).strftime('%Y%m%d_%H%M%S')
 three_weeks_ago = (datetime.utcnow() - timedelta(days=14)).strftime('%Y%m%d_%H%M%S')
 cursor.execute("""
     SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_added, source, date_parsing
@@ -138,9 +137,9 @@ def getcode_vacanciesdata(vacancies):
     def get_details_url(source, vacancy_id):
         if 'jobs_urzadpracy.sqlite' in source:
             return f"https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/{vacancy_id}"
-        elif 'jobs_pracujpl' in source:  # Подходит для jobs_pracujpl.sqlite и jobs_pracujpl_all.sqlite
+        elif 'jobs_pracujpl' in source:
             return f"https://www.pracuj.pl/praca/,oferta,{vacancy_id}"
-        return "#"  # По умолчанию, если источник неизвестен
+        return "#"
 
     vacancies_data = [
         {
@@ -156,7 +155,7 @@ def getcode_vacanciesdata(vacancies):
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
             'source': str(vacancy[9]),
             'date_parsing': str(vacancy[10]),
-            'details_url': get_details_url(str(vacancy[9]), vacancy[0])  # Новое поле с динамической ссылкой
+            'details_url': get_details_url(str(vacancy[9]), vacancy[0])
         }
         for vacancy in vacancies
     ]
@@ -246,6 +245,35 @@ def getcode_map_full2(vacancies):
                 border-radius: 50%;
                 cursor: pointer;
             }}
+            
+            #tag-container {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-top: 10px;
+            }}
+            .tag-btn {{
+                background-color: #e0e0e0;
+                border: none;
+                border-radius: 20px;
+                padding: 5px 10px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                font-size: 14px;
+            }}
+            .tag-btn.active {{
+                background-color: #007bff;
+                color: white;
+            }}
+            .tag-close {{
+                margin-left: 5px;
+                color: #999;
+                cursor: pointer;
+            }}
+            .tag-close:hover {{
+                color: #ff0000;
+            }}
         </style>
     </head>
     <body>
@@ -255,13 +283,17 @@ def getcode_map_full2(vacancies):
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="search-input">Search by Job Title:</label>
-                            <input type="text" id="search-input" class="form-control" placeholder="Enter text to filter">
+                            <label for="search-input">Search by Job Title: <span style="color: #007bff;">(Press Enter to save filter)</span></label>
+                            <div class="input-group">
+                                <button class="btn btn-primary" id="save-filter-btn">Save Filter</button>
+                                <input type="text" id="search-input" class="form-control" placeholder="Enter text to filter">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="exclude-input">Not in Job Title:</label>
                             <input type="text" id="exclude-input" class="form-control" placeholder="Exclude text from titles">
                         </div>
+                        <div id="tag-container"></div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -327,6 +359,83 @@ def getcode_map_full2(vacancies):
             fillOpacity: 0.1
         }}).addTo(map);
 
+        let searchTags = [];
+        let activeTags = new Set();
+        const maxTags = 10;
+        const storageKey = 'vacancyMapFilters';
+
+        function saveToLocalStorage() {{
+            localStorage.setItem(storageKey, JSON.stringify({{
+                searchTags: searchTags,
+                activeTags: Array.from(activeTags)
+            }}));
+        }}
+
+        function loadFromLocalStorage() {{
+            const savedData = localStorage.getItem(storageKey);
+            if (savedData) {{
+                const {{ searchTags: savedTags, activeTags: savedActive }} = JSON.parse(savedData);
+                searchTags = savedTags.slice(-maxTags);
+                activeTags = new Set(savedActive);
+                renderTags();
+                updateFilters();
+            }}
+        }}
+
+        function addTag(text) {{
+            if (text && !searchTags.includes(text)) {{
+                searchTags.push(text);
+                if (searchTags.length > maxTags) {{
+                    searchTags.shift();
+                }}
+                activeTags.add(text);
+                renderTags();
+                saveToLocalStorage();
+                updateFilters();
+            }}
+        }}
+
+        function toggleTag(text) {{
+            if (activeTags.has(text)) {{
+                activeTags.delete(text);
+            }} else {{
+                activeTags.add(text);
+            }}
+            renderTags();
+            saveToLocalStorage();
+            updateFilters();
+        }}
+
+        function removeTag(text) {{
+            searchTags = searchTags.filter(tag => tag !== text);
+            activeTags.delete(text);
+            renderTags();
+            saveToLocalStorage();
+            updateFilters();
+        }}
+
+        function renderTags() {{
+            const container = document.getElementById('tag-container');
+            container.innerHTML = '';
+            searchTags.forEach(tag => {{
+                const btn = document.createElement('button');
+                btn.className = 'tag-btn' + (activeTags.has(tag) ? ' active' : '');
+                btn.textContent = tag;
+                btn.onclick = () => toggleTag(tag);
+
+                const close = document.createElement('span');
+                close.className = 'tag-close';
+                close.textContent = '×';
+                close.onclick = (e) => {{
+                    e.stopPropagation();
+                    removeTag(tag);
+                }};
+
+                btn.appendChild(close);
+                container.appendChild(btn);
+            }});
+        }}
+
         function addMarkers(minSalary, maxDistance, searchText = '', excludeText = '', selectedSource = 'all', dateFrom = '', dateTo = '') {{
             markers.forEach(({{ marker }}) => map.removeLayer(marker));
             markers = [];
@@ -344,13 +453,22 @@ def getcode_map_full2(vacancies):
                 const dateFromFormatted = dateFrom.replace(/-/g, '');
                 const dateToFormatted = dateTo.replace(/-/g, '');
 
+                let matchesTag = activeTags.size === 0;
+                for (let tag of activeTags) {{
+                    if (title.includes(tag.toLowerCase())) {{
+                        matchesTag = true;
+                        break;
+                    }}
+                }}
+
                 if (salary >= minSalary && 
                     distance <= maxDistance && 
                     (search === '' || title.includes(search)) && 
                     (exclude === '' || !title.includes(exclude)) && 
                     (selectedSource === 'all' || source === selectedSource) && 
                     (dateFrom === '' || parseDate >= dateFromFormatted) && 
-                    (dateTo === '' || parseDate <= dateToFormatted)) {{
+                    (dateTo === '' || parseDate <= dateToFormatted) &&
+                    matchesTag) {{
                     const marker = L.marker([vacancy.latitude, vacancy.longitude], {{
                         icon: L.icon({{
                             iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${{markerColor}}.png`,
@@ -411,6 +529,22 @@ def getcode_map_full2(vacancies):
         document.getElementById('salary-slider').addEventListener('input', updateFilters);
         document.getElementById('radius-slider').addEventListener('input', updateFilters);
         document.getElementById('search-input').addEventListener('input', updateFilters);
+        document.getElementById('search-input').addEventListener('keyup', (e) => {{
+            if (e.key === 'Enter') {{
+                const text = e.target.value.trim();
+                if (text) {{
+                    addTag(text);
+                    e.target.value = '';
+                }}
+            }}
+        }});
+        document.getElementById('save-filter-btn').addEventListener('click', () => {{
+            const text = document.getElementById('search-input').value.trim();
+            if (text) {{
+                addTag(text);
+                document.getElementById('search-input').value = '';
+            }}
+        }});
         document.getElementById('exclude-input').addEventListener('input', updateFilters);
         document.getElementById('source-select').addEventListener('change', updateFilters);
         document.getElementById('date-from').addEventListener('change', updateFilters);
@@ -423,6 +557,7 @@ def getcode_map_full2(vacancies):
             toggleBtn.textContent = filterPanel.classList.contains('hidden') ? '▼' : '▲';
         }});
 
+        loadFromLocalStorage();
         addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
         </script>
     </body>

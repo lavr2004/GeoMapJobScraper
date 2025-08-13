@@ -106,6 +106,7 @@ def fetch_geolocation(job):
 
 
     addresstorequest_unquote = get_value_torequestfromnominatim(job)
+    print(f"OK: extracted address to request geolocation: addresstorequest_unquote == {addresstorequest_unquote}")
     # if not addresstorequest_unquote:
     #     return None
 
@@ -122,7 +123,7 @@ def fetch_geolocation(job):
         data_json, status_code = bin.logic.web.get_json_response_from_url(NOMINATIM_URL, headers_dc=headers, params_dc=params)
 
         if status_code == 200 and data_json:
-            return {
+            calculated_nominatim_data_dc =  {
                 "job_latitude": data_json[0].get("lat") if addresstorequest_unquote else 0,
                 "job_longitude": data_json[0].get("lon") if addresstorequest_unquote else 0,
                 "job_country": data_json[0]["address"].get("country"),
@@ -130,6 +131,8 @@ def fetch_geolocation(job):
                 "job_street": data_json[0]["address"].get("road"),
                 "job_building": data_json[0]["address"].get("house_number"),
             }
+            print(f"OK: extracted coordinates: job_latitude == {calculated_nominatim_data_dc.get('job_latitude')} and job_longitude == {calculated_nominatim_data_dc.get('job_longitude')}")
+            return calculated_nominatim_data_dc
 
         #response = requests.get(NOMINATIM_URL, params=params, headers=headers)
 

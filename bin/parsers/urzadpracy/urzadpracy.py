@@ -45,28 +45,32 @@ class UrzadparcyParser(BaseParser):
         #print(f"OK: Technical pause between requests to {self.PLATFORMNAME_STR} - {pause_seconds_int} seconds")
         self.logger_obj.info(f"OK: Technical pause between requests to {self.PLATFORMNAME_STR} - {pause_seconds_int} seconds")
         time.sleep(pause_seconds_int)
+        print(f"OK: POST request {self.URL_START_STR} with payload {json_post}")
         return bin.logic.web.get_json_response_from_url(self.URL_START_STR, json_dc=json_post, headers_dc=headers, request_type_str="POST")
 
     def parse(self, pagenumber_int=0) -> None:
         data, response_status_code = self._fetch_html(pagenumber_int)
         if response_status_code == 200:
-            jobs = data.get("payload", {}).get("ofertyPracyPage", {}).get("content", [])
+            print("OK: response status code is 200")
+            jobs_json = data.get("payload", {}).get("ofertyPracyPage", {}).get("content", [])
 
             # Сохраняем JSON-файл
             # os.makedirs(FOLDERPATH_DAILYDATA, exist_ok=True)
             #fp = os.path.join(FOLDERPATH_DAILYDATA, file_name)
             # fp = settings.get_dailyresultsfilepath_fc(PLATFORMNAME_str)
             # with open(fp, "w", encoding="utf-8") as fw:
-            #     json.dump(jobs, fw, ensure_ascii=False, indent=4)
+            #     json.dump(jobs_json, fw, ensure_ascii=False, indent=4)
 
-            fp = bin.logic.filesystem.write_daily_results_to_json_file(jobs, self.PLATFORMNAME_STR)
 
-            # Сохраняем информацию о запуске парсера
+            fp = bin.logic.filesystem.write_daily_results_to_json_file(jobs_json, self.PLATFORMNAME_STR)
+            print(f"OK: generating new filepath for results: {fp}")
+
+            # Сохраняем информацию о запуске парсера в базу данных
             file_name = settings.get_filenamefrompath(fp)
             parseiteration_id = self.oDatabase.save_parser_iteration(file_name, self.current_timestamp_str, response_status_code, 0)
 
             # Сохраняем вакансии
-            new_jobs_count = self.oDatabase.save_jobs_to_database(jobs, parseiteration_id)
+            new_jobs_count = self.oDatabase.save_jobs_to_database(jobs_json, parseiteration_id)
 
             # Обновляем количество новых вакансий в таблице parseiteration
             self.oDatabase.update_count_of_new_vacancies_added(new_jobs_count, parseiteration_id)
