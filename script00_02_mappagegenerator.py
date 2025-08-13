@@ -299,6 +299,7 @@ def getcode_map_full2(vacancies):
                             <input type="text" id="exclude-input" class="form-control" placeholder="Exclude text from titles">
                         </div>
                         <div id="tag-container"></div>
+                        <button id="toggle-text-filters-btn" class="btn btn-danger mt-2">Deactivate Text Filters</button>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -349,6 +350,8 @@ def getcode_map_full2(vacancies):
 
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script>
+        let textFiltersActive = true; // изначально фильтры включены
+        
         const vacancies = {getcode_vacanciesdata(vacancies)};
         const map = L.map('map').setView({centerpoint_coords_list_str}, 13);
         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{maxZoom: 19}}).addTo(map);
@@ -391,6 +394,10 @@ def getcode_map_full2(vacancies):
                 searchTags = savedTags.slice(-maxTags);
                 activeTags = new Set(savedActive);
                 centerCoords = savedCoords || {centerpoint_coords_list_str};
+                
+                textFiltersActive = activeTags.size > 0; // если пусто, значит фильтры выключены
+                updateToggleTextFiltersBtn(); // функция для обновления внешнего вида кнопки
+                
                 updateCenterMarker();
                 renderTags();
                 updateFilters();
@@ -608,6 +615,39 @@ def getcode_map_full2(vacancies):
 
         loadFromLocalStorage();
         addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
+        
+        //массовое включение-отключение текстовых фильтров
+        document.getElementById('toggle-text-filters-btn').addEventListener('click', () => {{
+            textFiltersActive = !textFiltersActive;
+            
+            if (textFiltersActive) {{
+                // Включаем все фильтры
+                activeTags = new Set(searchTags);
+            }} else {{
+                // Выключаем все фильтры
+                activeTags.clear();
+            }}
+            
+            updateToggleTextFiltersBtn();
+            
+            renderTags();
+            saveToLocalStorage();
+            updateFilters();
+        }}
+        );
+        
+        function updateToggleTextFiltersBtn() {{
+            const btn = document.getElementById('toggle-text-filters-btn');
+            if (textFiltersActive) {{
+                btn.textContent = 'Deactivate Text Filters';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-danger');
+            }} else {{
+                btn.textContent = 'Activate Text Filters';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-success');
+            }}
+        }}
         </script>
     </body>
     </html>
