@@ -387,6 +387,15 @@ def getcode_map_full2(vacancies):
         const maxTags = 10;
         const storageKey = 'vacancyMapFilters';
 
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        let appliedVacancies = JSON.parse(localStorage.getItem('appliedVacancies')) || [];
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        // UPDATED: 202508141200_appliedErrorFix: ADDED
+        if (!Array.isArray(appliedVacancies)) {{
+            appliedVacancies = [];
+        }}
+        // UPDATED: 202508141200_appliedErrorFix: ADDED
+
         // UPDATED: 202508140142_fixedcolors: DELETED
         // function generateRandomColor() {{ ... }}
         // UPDATED: 202508140142_fixedcolors: DELETED
@@ -535,6 +544,20 @@ def getcode_map_full2(vacancies):
             }});
         }}
 
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        function toggleApply(el) {{
+            let url = el.dataset.url;
+            if (appliedVacancies.includes(url)) {{
+                appliedVacancies = appliedVacancies.filter(u => u !== url);
+                el.innerHTML = '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
+            }} else {{
+                appliedVacancies.push(url);
+                el.innerHTML = '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>';
+            }}
+            localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
+        }}
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
+
         function addMarkers(minSalary, maxDistance, searchText = '', excludeText = '', selectedSource = 'all', dateFrom = '', dateTo = '') {{
             markers.forEach(({{ marker }}) => map.removeLayer(marker));
             markers = [];
@@ -591,15 +614,24 @@ def getcode_map_full2(vacancies):
                         }})
                     }}).addTo(map);
 
-                    marker.bindPopup(
-                        '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
-                        '<b><h5>Parsed: </b>' + vacancy.date_parsing + '</h5><br>' +
-                        '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + 
-                        vacancy.job_address_to_show + '<br><br>' +
-                        '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
-                        '<b>Source: </b>' + vacancy.source + '<br>' +
-                        '<a href="' + vacancy.details_url + '" target="_blank">Details...</a>'
-                    );
+                    // UPDATED: 202508141200_dynamicPopup: UPDATED
+                    marker.bindPopup(() => {{
+                        let applyHtml = appliedVacancies.includes(vacancy.details_url) ? 
+                            '<div class="d-flex justify-content-center align-items-center mt-2"><div class="apply-status" data-url="' + vacancy.details_url + '" onclick="toggleApply(this)"><i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span></div></div>' :
+                            '<div class="d-flex justify-content-center align-items-center mt-2"><div class="apply-status" data-url="' + vacancy.details_url + '" onclick="toggleApply(this)"><i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span></div></div>';
+
+                        return (
+                            '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
+                            '<b><h5>Parsed: </b>' + vacancy.date_parsing + '</h5><br>' +
+                            '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + 
+                            vacancy.job_address_to_show + '<br><br>' +
+                            '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
+                            '<b>Source: </b>' + vacancy.source + '<br>' +
+                            '<a href="' + vacancy.details_url + '" target="_blank">Details...</a>' +
+                            applyHtml
+                        );
+                    }});
+                    // UPDATED: 202508141200_dynamicPopup: UPDATED
 
                     markers.push({{ marker, is_new: vacancy.is_new }});
                 }}
@@ -692,6 +724,12 @@ def getcode_map_full2(vacancies):
                 btn.classList.add('btn-success');
             }}
         }}
+
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        const currentUrls = vacancies.map(v => v.details_url);
+        appliedVacancies = appliedVacancies.filter(url => currentUrls.includes(url));
+        localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
+        // UPDATED: 202508141200_appliedCheckbox: ADDED
 
         loadFromLocalStorage();
         addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
