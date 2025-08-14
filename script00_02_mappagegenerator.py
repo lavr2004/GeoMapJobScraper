@@ -11,6 +11,7 @@ FILEPATH_DATABASE = os.path.join(settings.FOLDERPATH_RESULTS_ALL, "combined_jobs
 MAX_DISTANCE_AROUND_AREA_KM = 30
 MAX_ALL_JOBS_COUNT_NOT_FILTERED = 10000
 MAX_COUNT_OF_JOBS_FILTERED = 10000
+LAST_MAX_COUNT_OF_DAYS_PERIOD = 14
 
 CENTRALPOINT_COORDINATES_LAT = 52.2297  # Центр Варшавы
 CENTRALPOINT_COORDINATES_LON = 21.0122  # Центр Варшавы
@@ -91,7 +92,7 @@ conn = sqlite3.connect(FILEPATH_DATABASE)
 cursor = conn.cursor()
 
 # Извлекаем вакансии не старше 2 недель по date_parsing
-three_weeks_ago = (datetime.utcnow() - timedelta(days=14)).strftime('%Y%m%d_%H%M%S')
+three_weeks_ago = (datetime.utcnow() - timedelta(days=LAST_MAX_COUNT_OF_DAYS_PERIOD)).strftime('%Y%m%d_%H%M%S')
 cursor.execute("""
     SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_added, source, date_parsing
     FROM jobs 
@@ -288,7 +289,7 @@ def getcode_map_full2(vacancies):
     <body>
         <div class="filter-panel" id="filterPanel">
             <div class="container">
-                <h1>VacMap:) {len(vacancies)} job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} km</h1>
+                <h1 id="vacancy-header">{len(vacancies)} job offers in radius of {MAX_DISTANCE_AROUND_AREA_KM} km for last {LAST_MAX_COUNT_OF_DAYS_PERIOD} days</h1>
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -350,6 +351,10 @@ def getcode_map_full2(vacancies):
 
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script>
+        // UPDATED: 202508140300_dynamicheader: ADDED
+        const minDate = '{min_date_formatted}';
+        const maxDate = '{max_date_formatted}';
+        // UPDATED: 202508140300_dynamicheader: ADDED
         let textFiltersActive = true;
         const vacancies = {getcode_vacanciesdata(vacancies)};
         const map = L.map('map').setView({centerpoint_coords_list_str}, 13);
@@ -601,6 +606,14 @@ def getcode_map_full2(vacancies):
             }});
 
             updateCenterMarker();
+            // UPDATED: 202508140300_dynamicheader: ADDED
+            const effectiveDateFrom = dateFrom || minDate;
+            const effectiveDateTo = dateTo || maxDate;
+            const daysPeriod = Math.ceil((new Date(effectiveDateTo) - new Date(effectiveDateFrom)) / (1000 * 60 * 60 * 24)) + 1;
+            const vacancyCount = markers.length;
+            const radiusKm = parseInt(maxDistance / 1000);
+            document.getElementById('vacancy-header').textContent = `${{vacancyCount}} job offers in radius of ${{radiusKm}} km for last ${{daysPeriod}} days`;
+            // UPDATED: 202508140300_dynamicheader: ADDED
         }}
 
         function filterMarkers(type) {{
@@ -700,6 +713,7 @@ def getcode_map_full2(vacancies):
     </html>
     '''
     return s
+
 
 html_content = getcode_map_full2(vacancies)
 html_file_path = settings.get_htmlmapfilepath_fc(PLATFORMNAME_str)
