@@ -7,39 +7,39 @@ BASE_DIR = FOLDERPATH_RESULTS_ALL
 OUTPUT_DB = os.path.join(BASE_DIR, "combined_jobs.sqlite")
 
 COMMON_FIELDS = [
-    'id', 'title', 'employer', 'salary', 'latitude', 'longitude', 'address',
-    'date_added', 'date_parsing', 'source', 'parseiteration_id', 'processed_iteration_id'
-]
+    'id', 'source_id', 'title', 'employer', 'salary', 'latitude', 'longitude', 'address',
+    'date_published', 'date_parsing', 'source', 'parseiteration_id', 'processed_iteration_id'
+]  # UPDATED: 202508141957_idmodification: ADDED - добавлено source_id
 
 def create_combined_database():
     conn = sqlite3.connect(OUTPUT_DB)
     cursor = conn.cursor()
 
-    # Обновляем таблицу jobs с новым полем processed_iteration_id
+    # Обновляем таблицу jobs с новым полем source_id и измененным id
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS jobs (
-            id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,  -- UPDATED: 202508141957_idmodification: REPLACED - изменено на INTEGER AUTOINCREMENT
+            source_id TEXT,  -- UPDATED: 202508141957_idmodification: ADDED - новое поле для оригинального id
             title TEXT,
             employer TEXT,
             salary TEXT,
             latitude REAL,
             longitude REAL,
             address TEXT,
-            date_added TEXT,
+            date_published TEXT,
             date_parsing TEXT,
             source TEXT,
-            parseiteration_id INTEGER,  -- Оригинальный parseiteration_id из источника
-            processed_iteration_id INTEGER,  -- Новый внешний ключ на processed_iterations
+            parseiteration_id INTEGER,
+            processed_iteration_id INTEGER,
             FOREIGN KEY (processed_iteration_id) REFERENCES processed_iterations(id)
         )
     ''')
 
-    # Обновляем таблицу processed_iterations с новым уникальным id
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS processed_iterations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID для каждой записи
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             source TEXT,
-            parseiteration_id INTEGER,  -- Оригинальный parseiteration_id из источника
+            parseiteration_id INTEGER,
             timestamp TEXT
         )
     ''')
@@ -51,7 +51,6 @@ def get_latest_iteration(db_path):
     conn = sqlite3.connect(OUTPUT_DB)
     cursor = conn.cursor()
     source = os.path.basename(db_path)
-    # Получаем максимальный parseiteration_id для данного источника
     cursor.execute('SELECT MAX(parseiteration_id) FROM processed_iterations WHERE source = ?', (source,))
     result = cursor.fetchone()[0]
     conn.close()
@@ -77,30 +76,29 @@ def process_database(db_path):
     field_mapping = {}
     if 'stanowisko' in columns:  # jobs_urzadpracy.sqlite
         field_mapping = {
-            'id': 'id',
+            'source_id': 'id',  # UPDATED: 202508141957_idmodification: REPLACED - id теперь source_id
             'title': 'stanowisko',
             'employer': 'pracodawca',
             'salary': 'wynagrodzenie',
             'latitude': 'job_latitude',
             'longitude': 'job_longitude',
             'address': "miejscePracy || ', ' || miejscowoscNazwa",
-            'date_added': 'dataDodaniaCbop',
+            'date_published': 'dataDodaniaCbop',
             'parseiteration_id': 'parseiteration_id'
         }
     elif 'job_title' in columns:  # jobs_pracujpl_all.sqlite
         field_mapping = {
-            'id': 'id',
+            'source_id': 'id',  # UPDATED: 202508141957_idmodification: REPLACED - id теперь source_id
             'title': 'job_title',
             'employer': 'company_name',
             'salary': 'salary',
             'latitude': 'job_latitude',
             'longitude': 'job_longitude',
             'address': "job_street || ', ' || job_locality",
-            'date_added': 'last_publicated',
+            'date_published': 'last_publicated',
             'parseiteration_id': 'parseiteration_id'
         }
 
-    # Извлекаем новые вакансии с датой парсинга из parseiteration
     query = f"""
         SELECT j.{', j.'.join(field_mapping.values())}, p.timestamp
         FROM jobs j
@@ -113,34 +111,36 @@ def process_database(db_path):
     dest_conn = sqlite3.connect(OUTPUT_DB)
     dest_cursor = dest_conn.cursor()
 
-    # Сначала добавляем запись в processed_iterations и получаем её id
     dest_cursor.execute('''
         INSERT INTO processed_iterations (source, parseiteration_id, timestamp)
         VALUES (?, ?, ?)
     ''', (source, max_iteration, datetime.now().isoformat()))
-    processed_iteration_id = dest_cursor.lastrowid  # Получаем уникальный id новой записи
+    processed_iteration_id = dest_cursor.lastrowid
 
-    # Добавляем вакансии с привязкой к processed_iteration_id
     for job in new_jobs:
         values = {
-            'id': job[0],
+            'source_id': job[0],  # UPDATED: 202508141957_idmodification: REPLACED - id теперь source_id
             'title': job[1],
             'employer': job[2],
             'salary': job[3],
             'latitude': job[4],
             'longitude': job[5],
             'address': job[6],
-            'date_added': job[7],
-            'date_parsing': job[9],  # timestamp из parseiteration
+            'date_published': job[7],
+            'date_parsing': job[9],
             'source': source,
-            'parseiteration_id': job[8],  # Оригинальный parseiteration_id
-            'processed_iteration_id': processed_iteration_id  # Ссылка на processed_iterations
+            'parseiteration_id': job[8],
+            'processed_iteration_id': processed_iteration_id
         }
 
         dest_cursor.execute('''
-            INSERT OR IGNORE INTO jobs (id, title, employer, salary, latitude, longitude, address, date_added, date_parsing, source, parseiteration_id, processed_iteration_id)
-            VALUES (:id, :title, :employer, :salary, :latitude, :longitude, :address, :date_added, :date_parsing, :source, :parseiteration_id, :processed_iteration_id)
-        ''', values)
+            INSERT OR IGNORE INTO jobs (
+                source_id, title, employer, salary, latitude, longitude, address, 
+                date_published, date_parsing, source, parseiteration_id, processed_iteration_id
+            )
+            VALUES (:source_id, :title, :employer, :salary, :latitude, :longitude, :address, 
+                    :date_published, :date_parsing, :source, :parseiteration_id, :processed_iteration_id)
+        ''', values)  # UPDATED: 202508141957_idmodification: UPDATED - убрано id, добавлено source_id
 
     dest_conn.commit()
     src_conn.close()
@@ -164,25 +164,24 @@ if __name__ == "__main__":
     combine_databases()
 
 
-
 # import sqlite3
 # import os
 # from datetime import datetime
 # from bin.settings import FOLDERPATH_RESULTS_ALL
 #
-# #BASE_DIR = r"D:\!DEV_APPS\000_scripts_for-different-things\001_python_scripts-for-requesting-jobs\GeoMapJobScraper\results"
 # BASE_DIR = FOLDERPATH_RESULTS_ALL
 # OUTPUT_DB = os.path.join(BASE_DIR, "combined_jobs.sqlite")
 #
 # COMMON_FIELDS = [
 #     'id', 'title', 'employer', 'salary', 'latitude', 'longitude', 'address',
-#     'date_added', 'date_parsing', 'source', 'parseiteration_id'
+#     'date_published', 'date_parsing', 'source', 'parseiteration_id', 'processed_iteration_id'
 # ]
 #
 # def create_combined_database():
 #     conn = sqlite3.connect(OUTPUT_DB)
 #     cursor = conn.cursor()
 #
+#     # Обновляем таблицу jobs с новым полем processed_iteration_id
 #     cursor.execute('''
 #         CREATE TABLE IF NOT EXISTS jobs (
 #             id TEXT PRIMARY KEY,
@@ -192,19 +191,22 @@ if __name__ == "__main__":
 #             latitude REAL,
 #             longitude REAL,
 #             address TEXT,
-#             date_added TEXT,
-#             date_parsing TEXT,  -- Новое поле для даты парсинга
+#             date_published TEXT,
+#             date_parsing TEXT,
 #             source TEXT,
-#             parseiteration_id INTEGER
+#             parseiteration_id INTEGER,  -- Оригинальный parseiteration_id из источника
+#             processed_iteration_id INTEGER,  -- Новый внешний ключ на processed_iterations
+#             FOREIGN KEY (processed_iteration_id) REFERENCES processed_iterations(id)
 #         )
 #     ''')
 #
+#     # Обновляем таблицу processed_iterations с новым уникальным id
 #     cursor.execute('''
 #         CREATE TABLE IF NOT EXISTS processed_iterations (
+#             id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID для каждой записи
 #             source TEXT,
-#             parseiteration_id INTEGER,
-#             timestamp TEXT,
-#             PRIMARY KEY (source, parseiteration_id)
+#             parseiteration_id INTEGER,  -- Оригинальный parseiteration_id из источника
+#             timestamp TEXT
 #         )
 #     ''')
 #
@@ -215,6 +217,7 @@ if __name__ == "__main__":
 #     conn = sqlite3.connect(OUTPUT_DB)
 #     cursor = conn.cursor()
 #     source = os.path.basename(db_path)
+#     # Получаем максимальный parseiteration_id для данного источника
 #     cursor.execute('SELECT MAX(parseiteration_id) FROM processed_iterations WHERE source = ?', (source,))
 #     result = cursor.fetchone()[0]
 #     conn.close()
@@ -247,7 +250,7 @@ if __name__ == "__main__":
 #             'latitude': 'job_latitude',
 #             'longitude': 'job_longitude',
 #             'address': "miejscePracy || ', ' || miejscowoscNazwa",
-#             'date_added': 'dataDodaniaCbop',
+#             'date_published': 'dataDodaniaCbop',
 #             'parseiteration_id': 'parseiteration_id'
 #         }
 #     elif 'job_title' in columns:  # jobs_pracujpl_all.sqlite
@@ -259,7 +262,7 @@ if __name__ == "__main__":
 #             'latitude': 'job_latitude',
 #             'longitude': 'job_longitude',
 #             'address': "job_street || ', ' || job_locality",
-#             'date_added': 'last_publicated',
+#             'date_published': 'last_publicated',
 #             'parseiteration_id': 'parseiteration_id'
 #         }
 #
@@ -276,6 +279,14 @@ if __name__ == "__main__":
 #     dest_conn = sqlite3.connect(OUTPUT_DB)
 #     dest_cursor = dest_conn.cursor()
 #
+#     # Сначала добавляем запись в processed_iterations и получаем её id
+#     dest_cursor.execute('''
+#         INSERT INTO processed_iterations (source, parseiteration_id, timestamp)
+#         VALUES (?, ?, ?)
+#     ''', (source, max_iteration, datetime.now().isoformat()))
+#     processed_iteration_id = dest_cursor.lastrowid  # Получаем уникальный id новой записи
+#
+#     # Добавляем вакансии с привязкой к processed_iteration_id
 #     for job in new_jobs:
 #         values = {
 #             'id': job[0],
@@ -285,21 +296,17 @@ if __name__ == "__main__":
 #             'latitude': job[4],
 #             'longitude': job[5],
 #             'address': job[6],
-#             'date_added': job[7],
+#             'date_published': job[7],
 #             'date_parsing': job[9],  # timestamp из parseiteration
 #             'source': source,
-#             'parseiteration_id': job[8]
+#             'parseiteration_id': job[8],  # Оригинальный parseiteration_id
+#             'processed_iteration_id': processed_iteration_id  # Ссылка на processed_iterations
 #         }
 #
 #         dest_cursor.execute('''
-#             INSERT OR IGNORE INTO jobs (id, title, employer, salary, latitude, longitude, address, date_added, date_parsing, source, parseiteration_id)
-#             VALUES (:id, :title, :employer, :salary, :latitude, :longitude, :address, :date_added, :date_parsing, :source, :parseiteration_id)
+#             INSERT OR IGNORE INTO jobs (id, title, employer, salary, latitude, longitude, address, date_published, date_parsing, source, parseiteration_id, processed_iteration_id)
+#             VALUES (:id, :title, :employer, :salary, :latitude, :longitude, :address, :date_published, :date_parsing, :source, :parseiteration_id, :processed_iteration_id)
 #         ''', values)
-#
-#     dest_cursor.execute('''
-#         INSERT OR REPLACE INTO processed_iterations (source, parseiteration_id, timestamp)
-#         VALUES (?, ?, ?)
-#     ''', (source, max_iteration, datetime.now().isoformat()))
 #
 #     dest_conn.commit()
 #     src_conn.close()

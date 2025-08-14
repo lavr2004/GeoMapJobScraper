@@ -94,7 +94,7 @@ cursor = conn.cursor()
 # Извлекаем вакансии не старше 2 недель по date_parsing
 three_weeks_ago = (datetime.utcnow() - timedelta(days=LAST_MAX_COUNT_OF_DAYS_PERIOD)).strftime('%Y%m%d_%H%M%S')
 cursor.execute("""
-    SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_added, source, date_parsing
+    SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_published, source, date_parsing
     FROM jobs 
     WHERE date_parsing >= ? 
     ORDER BY parseiteration_id DESC 
