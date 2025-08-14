@@ -132,8 +132,6 @@ def extract_salary(text):
     return int(r) if r else 0
 
 def getcode_vacanciesdata(vacancies):
-    # UPDATED: 202508131940_centerpin: UPDATED
-    # Определяем текущую дату для сравнения с date_added
     current_date = datetime.utcnow().strftime('%Y-%m-%d')
 
     def get_details_url(source, vacancy_id):
@@ -151,7 +149,7 @@ def getcode_vacanciesdata(vacancies):
             'latitude': vacancy[3],
             'longitude': vacancy[4],
             'employee': str(vacancy[5])[:50],
-            'is_new': str(vacancy[8]).split("T")[0] == current_date if vacancy[8] else False,  # Проверка на текущую дату
+            'is_new': str(vacancy[8]).split("T")[0] == current_date if vacancy[8] else False,
             'salary_to_show': str(vacancy[2]).split('.')[0] if vacancy[2] else "0",
             'job_address_to_show': str(vacancy[7]) if vacancy[7] else "",
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
@@ -162,7 +160,6 @@ def getcode_vacanciesdata(vacancies):
         for vacancy in vacancies
     ]
     return json.dumps(vacancies_data, ensure_ascii=False)
-    # UPDATED: 202508131940_centerpin: UPDATED
 
 def getcode_map_full2(vacancies):
     centerpoint_coords_list_str = f"[{CENTRALPOINT_COORDINATES_LAT}, {CENTRALPOINT_COORDINATES_LON}]"
@@ -178,6 +175,7 @@ def getcode_map_full2(vacancies):
         <title>Vacancy Map</title>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
@@ -213,9 +211,15 @@ def getcode_map_full2(vacancies):
                 background-color: #007bff;
                 color: white;
                 border: none;
-                padding: 5px 10px;
+                padding: 10px 20px; /* Больше отступы — больше кнопка */
+                font-size: 18px;    /* Увеличенный текст/стрелка */
+                border-radius: 6px; /* Скруглённые углы */
                 cursor: pointer;
                 z-index: 1001;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* Лёгкая тень */
+            }}
+            .toggle-btn:hover {{
+                background-color: #0056b3; /* Подсветка при наведении */
             }}
             .slider-label {{
                 margin-right: 10px;
@@ -255,7 +259,6 @@ def getcode_map_full2(vacancies):
                 margin-top: 10px;
             }}
             .tag-btn {{
-                background-color: #e0e0e0;
                 border: none;
                 border-radius: 20px;
                 padding: 5px 10px;
@@ -263,9 +266,10 @@ def getcode_map_full2(vacancies):
                 display: flex;
                 align-items: center;
                 font-size: 14px;
+                background-color: #e0e0e0;
+                color: #212529;
             }}
             .tag-btn.active {{
-                background-color: #007bff;
                 color: white;
             }}
             .tag-close {{
@@ -326,16 +330,12 @@ def getcode_map_full2(vacancies):
                         </div>
                         <div class="mb-3">
                             <label class="slider-label" for="radius-slider">Search Radius (km):</label>
-                            
                             <div class="input-group">
                                 <input id="radius-slider" class="slider" type="range" min="1" max="{MAX_DISTANCE_AROUND_AREA_KM}" step="1" value="{MAX_DISTANCE_AROUND_AREA_KM}">
                             </div>
                             <span id="radius-value">{MAX_DISTANCE_AROUND_AREA_KM} km</span>
                         </div>
                         <div>
-                            <h2>Legend:</h2>
-                            <p><span style="color:red;">●</span> New Vacancies (Published Today)</p>
-                            <p><span style="color:blue;">●</span> Older Vacancies</p>
                             <button class="btn btn-primary me-2" onclick="filterMarkers('new')">New</button>
                             <button class="btn btn-secondary me-2" onclick="filterMarkers('old')">Old</button>
                             <button class="btn btn-success" onclick="filterMarkers('all')">All</button>
@@ -350,14 +350,13 @@ def getcode_map_full2(vacancies):
 
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script>
-        let textFiltersActive = true; // изначально фильтры включены
-        
+        let textFiltersActive = true;
         const vacancies = {getcode_vacanciesdata(vacancies)};
         const map = L.map('map').setView({centerpoint_coords_list_str}, 13);
         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{maxZoom: 19}}).addTo(map);
 
         const binocularIcon = L.icon({{
-            iconUrl: 'https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/pingus-icon-icon.png',
+            iconUrl: 'https://icons.iconarchive.com/icons/iconka/business-finance/256/target-icon.png',
             iconSize: [32, 32],
             iconAnchor: [16, 32],
             popupAnchor: [0, -32]
@@ -376,28 +375,47 @@ def getcode_map_full2(vacancies):
 
         let searchTags = [];
         let activeTags = new Set();
+        let tagColors = {{}};
+        // UPDATED: 202508140142_fixedcolors: ADDED
+        const availableColors = ['blue', 'gold', 'green', 'orange', 'yellow', 'violet', 'grey', 'black', 'red'];
+        // UPDATED: 202508140142_fixedcolors: ADDED
         const maxTags = 10;
         const storageKey = 'vacancyMapFilters';
+
+        // UPDATED: 202508140142_fixedcolors: DELETED
+        // function generateRandomColor() {{ ... }}
+        // UPDATED: 202508140142_fixedcolors: DELETED
 
         function saveToLocalStorage() {{
             localStorage.setItem(storageKey, JSON.stringify({{
                 searchTags: searchTags,
                 activeTags: Array.from(activeTags),
-                centerCoords: centerCoords
+                centerCoords: centerCoords,
+                tagColors: tagColors
             }}));
         }}
 
         function loadFromLocalStorage() {{
             const savedData = localStorage.getItem(storageKey);
             if (savedData) {{
-                const {{ searchTags: savedTags, activeTags: savedActive, centerCoords: savedCoords }} = JSON.parse(savedData);
+                const {{ searchTags: savedTags, activeTags: savedActive, centerCoords: savedCoords, tagColors: savedTagColors }} = JSON.parse(savedData);
                 searchTags = savedTags.slice(-maxTags);
                 activeTags = new Set(savedActive);
                 centerCoords = savedCoords || {centerpoint_coords_list_str};
-                
-                textFiltersActive = activeTags.size > 0; // если пусто, значит фильтры выключены
-                updateToggleTextFiltersBtn(); // функция для обновления внешнего вида кнопки
-                
+                // UPDATED: 202508140142_fixedcolors: UPDATED
+                tagColors = {{}};
+                savedTags.forEach(tag => {{
+                    if (savedTagColors[tag] && availableColors.includes(savedTagColors[tag])) {{
+                        tagColors[tag] = savedTagColors[tag];
+                    }} else {{
+                        const usedColors = Object.values(tagColors);
+                        const nextColor = availableColors.find(color => !usedColors.includes(color)) || 'red';
+                        tagColors[tag] = nextColor;
+                    }}
+                }});
+                // UPDATED: 202508140142_fixedcolors: UPDATED
+                textFiltersActive = activeTags.size > 0;
+                updateToggleTextFiltersBtn();
                 updateCenterMarker();
                 renderTags();
                 updateFilters();
@@ -411,13 +429,14 @@ def getcode_map_full2(vacancies):
             binocularMarker = L.marker(centerCoords, {{ 
                 icon: binocularIcon, 
                 draggable: false,
-                zIndexOffset: 1000  // Высокий zIndex для отображения поверх других маркеров
+                zIndexOffset: 1000
             }})
                 .addTo(map)
-                .bindPopup('<div class="animate__animated animate__bounce"><b>Here we start! :)</b><br>Search area center</div>')
+                .bindPopup('<div class="animate__animated animate__bounce"><b>🎯 Radius point:)</b></div>')
                 .openPopup();
             radiusCircle.setLatLng(centerCoords);
         }}
+
         function toggleSetRadiusMode() {{
             setRadiusMode = !setRadiusMode;
             const setRadiusBtn = document.getElementById('set-radius-btn');
@@ -436,14 +455,23 @@ def getcode_map_full2(vacancies):
             updateCenterMarker();
             saveToLocalStorage();
             updateFilters();
-            toggleSetRadiusMode(); // Отключаем режим после клика
+            toggleSetRadiusMode();
         }}
 
         function addTag(text) {{
             if (text && !searchTags.includes(text)) {{
                 searchTags.push(text);
+                // UPDATED: 202508140142_fixedcolors: UPDATED
+                if (!tagColors[text]) {{
+                    const usedColors = Object.values(tagColors);
+                    const nextColor = availableColors.find(color => !usedColors.includes(color)) || 'red';
+                    tagColors[text] = nextColor;
+                }}
+                // UPDATED: 202508140142_fixedcolors: UPDATED
                 if (searchTags.length > maxTags) {{
-                    searchTags.shift();
+                    const removedTag = searchTags.shift();
+                    activeTags.delete(removedTag);
+                    delete tagColors[removedTag];
                 }}
                 activeTags.add(text);
                 renderTags();
@@ -458,6 +486,8 @@ def getcode_map_full2(vacancies):
             }} else {{
                 activeTags.add(text);
             }}
+            textFiltersActive = activeTags.size > 0;
+            updateToggleTextFiltersBtn();
             renderTags();
             saveToLocalStorage();
             updateFilters();
@@ -466,6 +496,9 @@ def getcode_map_full2(vacancies):
         function removeTag(text) {{
             searchTags = searchTags.filter(tag => tag !== text);
             activeTags.delete(text);
+            delete tagColors[text];
+            textFiltersActive = activeTags.size > 0;
+            updateToggleTextFiltersBtn();
             renderTags();
             saveToLocalStorage();
             updateFilters();
@@ -477,6 +510,10 @@ def getcode_map_full2(vacancies):
             searchTags.forEach(tag => {{
                 const btn = document.createElement('button');
                 btn.className = 'tag-btn' + (activeTags.has(tag) ? ' active' : '');
+                // UPDATED: 202508140142_fixedcolors: UPDATED
+                btn.style.backgroundColor = activeTags.has(tag) ? tagColors[tag] : '#e0e0e0';
+                btn.style.color = activeTags.has(tag) ? '#ffffff' : '#212529';
+                // UPDATED: 202508140142_fixedcolors: UPDATED
                 btn.textContent = tag;
                 btn.onclick = () => toggleTag(tag);
 
@@ -498,7 +535,17 @@ def getcode_map_full2(vacancies):
             markers = [];
 
             vacancies.forEach(vacancy => {{
-                const markerColor = vacancy.is_new ? 'red' : 'blue';
+                // UPDATED: 202508140142_fixedcolors: UPDATED
+                let markerColor = vacancy.is_new && activeTags.size === 0 ? 'red' : 'blue';
+                if (activeTags.size > 0) {{
+                    for (let tag of activeTags) {{
+                        if (vacancy.title.toLowerCase().includes(tag.toLowerCase())) {{
+                            markerColor = tagColors[tag];
+                            break;
+                        }}
+                    }}
+                }}
+                // UPDATED: 202508140142_fixedcolors: UPDATED
                 const salary = vacancy.salary;
                 const distance = map.distance([vacancy.latitude, vacancy.longitude], centerCoords);
                 const title = vacancy.title.toLowerCase();
@@ -528,12 +575,14 @@ def getcode_map_full2(vacancies):
                     matchesTag) {{
                     const marker = L.marker([vacancy.latitude, vacancy.longitude], {{
                         icon: L.icon({{
+                            // UPDATED: 202508140142_fixedcolors: UPDATED
                             iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${{markerColor}}.png`,
                             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
                             iconSize: [25, 41],
                             iconAnchor: [12, 41],
                             popupAnchor: [1, -34],
                             shadowSize: [41, 41]
+                            // UPDATED: 202508140142_fixedcolors: UPDATED
                         }})
                     }}).addTo(map);
 
@@ -605,37 +654,19 @@ def getcode_map_full2(vacancies):
         document.getElementById('date-from').addEventListener('change', updateFilters);
         document.getElementById('date-to').addEventListener('change', updateFilters);
         document.getElementById('set-radius-btn').addEventListener('click', toggleSetRadiusMode);
-
-        const filterPanel = document.getElementById('filterPanel');
-        const toggleBtn = document.getElementById('toggleBtn');
-        toggleBtn.addEventListener('click', () => {{
-            filterPanel.classList.toggle('hidden');
-            toggleBtn.textContent = filterPanel.classList.contains('hidden') ? '▼' : '▲';
-        }});
-
-        loadFromLocalStorage();
-        addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
-        
-        //массовое включение-отключение текстовых фильтров
         document.getElementById('toggle-text-filters-btn').addEventListener('click', () => {{
             textFiltersActive = !textFiltersActive;
-            
             if (textFiltersActive) {{
-                // Включаем все фильтры
                 activeTags = new Set(searchTags);
             }} else {{
-                // Выключаем все фильтры
                 activeTags.clear();
             }}
-            
             updateToggleTextFiltersBtn();
-            
             renderTags();
             saveToLocalStorage();
             updateFilters();
-        }}
-        );
-        
+        }});
+
         function updateToggleTextFiltersBtn() {{
             const btn = document.getElementById('toggle-text-filters-btn');
             if (textFiltersActive) {{
@@ -648,6 +679,22 @@ def getcode_map_full2(vacancies):
                 btn.classList.add('btn-success');
             }}
         }}
+
+        loadFromLocalStorage();
+        addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
+        
+        // выдвигаем либо прячем контейнер с фильтрами
+        document.getElementById('toggleBtn').addEventListener('click', () => {{
+            const panel = document.getElementById('filterPanel');
+            panel.classList.toggle('hidden');
+    
+            const btn = document.getElementById('toggleBtn');
+            if (panel.classList.contains('hidden')) {{
+                btn.textContent = '▲';
+            }} else {{
+                btn.textContent = '▼';
+            }}
+        }});
         </script>
     </body>
     </html>
