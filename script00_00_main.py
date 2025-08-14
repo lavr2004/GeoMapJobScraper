@@ -14,7 +14,7 @@ def main():
     #launch_parser_pracujpl()
     #launch_parser_pracujpl_all_warszawa()
     exec_try_except(launch_parser_urzadpracy)
-    #exec_try_except(launch_parser_pracujpl_all_warszawa)
+    exec_try_except(launch_parser_pracujpl_all_warszawa)
 
 
 
