@@ -94,7 +94,7 @@ cursor = conn.cursor()
 # Извлекаем вакансии не старше 2 недель по date_parsing
 three_weeks_ago = (datetime.utcnow() - timedelta(days=LAST_MAX_COUNT_OF_DAYS_PERIOD)).strftime('%Y%m%d_%H%M%S')
 cursor.execute("""
-    SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_published, source, date_parsing
+    SELECT id, title, salary, latitude, longitude, employer, parseiteration_id, address, date_published, source, date_parsing, source_id
     FROM jobs 
     WHERE date_parsing >= ? 
     ORDER BY parseiteration_id DESC 
@@ -135,11 +135,11 @@ def extract_salary(text):
 def getcode_vacanciesdata(vacancies):
     current_date = datetime.utcnow().strftime('%Y-%m-%d')
 
-    def get_details_url(source, vacancy_id):
+    def get_details_url(source, vacancy_source_id):
         if 'jobs_urzadpracy.sqlite' in source:
-            return f"https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/{vacancy_id}"
+            return f"https://oferty.praca.gov.pl/portal/lista-ofert/szczegoly-oferty/{vacancy_source_id}"
         elif 'jobs_pracujpl' in source:
-            return f"https://www.pracuj.pl/praca/,oferta,{vacancy_id}"
+            return f"https://www.pracuj.pl/praca/,oferta,{vacancy_source_id}"
         return "#"
 
     vacancies_data = [
@@ -156,7 +156,7 @@ def getcode_vacanciesdata(vacancies):
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
             'source': str(vacancy[9]),
             'date_parsing': str(vacancy[10]),
-            'details_url': get_details_url(str(vacancy[9]), vacancy[0])
+            'details_url': get_details_url(str(vacancy[9]), vacancy[11])
         }
         for vacancy in vacancies
     ]
