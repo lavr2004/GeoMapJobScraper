@@ -156,7 +156,8 @@ def getcode_vacanciesdata(vacancies):
             'last_publicated': str(vacancy[8]).split("T")[0] if vacancy[8] else "N/A",
             'source': str(vacancy[9]),
             'date_parsing': str(vacancy[10]),
-            'details_url': get_details_url(str(vacancy[9]), vacancy[11])
+            'details_url': get_details_url(str(vacancy[9]), vacancy[11]),
+            'has_address': bool(vacancy[7] and str(vacancy[7]).strip())
         }
         for vacancy in vacancies
     ]
@@ -169,17 +170,15 @@ def getcode_map_full2(vacancies):
 
     s = f'''
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="ru">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Vacancy Map</title>
+        <title>Карта Вакансий</title>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-        <!-- UPDATED: 202508150056_dateFormatFlatpickr: ADDED -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-        <!-- UPDATED: 202508150056_dateFormatFlatpickr: ADDED -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
@@ -187,118 +186,118 @@ def getcode_map_full2(vacancies):
             body {{
                 background-color: #f8f9fa;
                 font-family: 'Roboto', sans-serif;
-                color: #212529;
                 margin: 0;
                 padding: 0;
+                overflow: hidden;
             }}
-            #map {{
-                height: 100vh;
-            }}
+            #map {{ height: 100vh; }}
+
+            /* --- MODIFIED: Top Filter Panel (Original structure, modified behavior) --- */
             .filter-panel {{
-                position: absolute;
+                position: fixed; /* Use fixed for consistent positioning */
                 top: 0;
-                width: 100%;
+                left:0; right:0; /* Ensure full width */
                 background-color: #fff;
                 z-index: 1000;
                 padding: 20px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
                 transition: transform 0.3s ease-in-out;
+                transform: translateY(-100%); /* Start hidden */
             }}
-            .filter-panel.hidden {{
-                transform: translateY(-100%);
+            .filter-panel.visible {{
+                transform: translateY(0);
             }}
-            .toggle-btn {{
-                position: absolute;
+            .toggle-btn-top {{
+                position: absolute; /* Positioned relative to the panel */
                 top: 100%;
                 left: 50%;
                 transform: translateX(-50%);
                 background-color: #007bff;
                 color: white;
                 border: none;
-                padding: 10px 20px;
-                font-size: 18px;
-                border-radius: 6px;
+                padding: 8px 25px;
+                font-size: 22px;
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
                 cursor: pointer;
                 z-index: 1001;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
             }}
-            .toggle-btn:hover {{
-                background-color: #0056b3;
-            }}
-            .slider-label {{
-                margin-right: 10px;
-            }}
-            .slider {{
-                width: 100%;
-                height: 8px;
-                background: #ddd;
-                border-radius: 5px;
-                outline: none;
-                opacity: 0.9;
-                transition: opacity 0.2s ease-in-out;
-            }}
-            .slider:hover {{
-                opacity: 1;
-            }}
-            .slider::-webkit-slider-thumb {{
-                appearance: none;
-                width: 20px;
-                height: 20px;
-                background: #007bff;
-                border-radius: 50%;
-                cursor: pointer;
-                box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
-            }}
-            .slider::-moz-range-thumb {{
-                width: 20px;
-                height: 20px;
-                background: #007bff;
-                border-radius: 50%;
-                cursor: pointer;
-            }}
-            #tag-container {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 5px;
-                margin-top: 10px;
-            }}
-            .tag-btn {{
-                border: none;
-                border-radius: 20px;
-                padding: 5px 10px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                font-size: 14px;
-                background-color: #e0e0e0;
-                color: #212529;
-            }}
-            .tag-btn.active {{
-                color: white;
-            }}
-            .tag-close {{
-                margin-left: 5px;
-                color: #999;
-                cursor: pointer;
-            }}
-            .tag-close:hover {{
-                color: #ff0000;
-            }}
-            .set-radius-cursor {{
-                cursor: url('https://icons.iconarchive.com/icons/papirus-team/papirus-apps/32/pingus-icon-icon.png') 16 32, auto;
-            }}
-            /* UPDATED: 202508150056_dateFormatFlatpickr: ADDED */
-            .flatpickr-input {{
-                width: 100%;
-                padding: 0.375rem 0.75rem;
-                font-size: 1rem;
-                line-height: 1.5;
-                color: #212529;
+            .toggle-btn-top:hover {{ background-color: #0056b3; }}
+
+            /* --- MODIFIED: Right Side Panel (Improved design, modified behavior) --- */
+            .side-panel {{
+                position: fixed;
+                top: 0;
+                right: 0;
+                width: 380px;
+                max-width: 90%;
+                height: 100vh;
                 background-color: #fff;
-                border: 1px solid #ced4da;
-                border-radius: 0.25rem;
+                z-index: 1002;
+                box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+                transition: transform 0.4s ease-in-out;
+                transform: translateX(100%);
             }}
-            /* UPDATED: 202508150056_dateFormatFlatpickr: ADDED */
+            .side-panel.visible {{
+                transform: translateX(0);
+            }}
+            .toggle-btn-right {{
+                position: absolute; /* Positioned relative to the panel */
+                top: 50%;
+                right: 100%; /* Sticks to the left edge of the panel */
+                transform: translateY(-50%);
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 12px 10px;
+                font-size: 20px;
+                cursor: pointer;
+                z-index: 1001;
+                box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.3);
+                border-top-left-radius: 12px;
+                border-bottom-left-radius: 12px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }}
+            .toggle-btn-right:hover {{ background-color: #5a6268; }}
+            .panel-content {{
+                padding: 15px;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+            }}
+            .panel-list {{
+                overflow-y: auto;
+                flex-grow: 1;
+            }}
+            .vacancy-item {{
+                padding: 10px;
+                border-bottom: 1px solid #eee;
+                font-size: 0.9rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .vacancy-item-details a {{
+                text-decoration: none;
+                color: #007bff;
+                font-weight: bold;
+            }}
+            .vacancy-item-details p {{ margin: 4px 0 0; color: #6c757d; }}
+            .apply-toggle-container {{ cursor: pointer; text-align: center; }}
+            
+            /* --- Original / Unchanged styles --- */
+            .slider {{ width: 100%; }}
+            #tag-container {{ display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }}
+            .tag-btn {{ border: none; border-radius: 20px; padding: 5px 10px; cursor: pointer; display: flex; align-items: center; font-size: 14px; background-color: #e0e0e0; color: #212529; }}
+            .tag-btn.active {{ color: white; }}
+            .tag-close {{ margin-left: 5px; color: #999; cursor: pointer; }}
+            .tag-close:hover {{ color: #ff0000; }}
+            .set-radius-cursor {{ cursor: url('https://icons.iconarchive.com/icons/papirus-team/papirus-apps/32/pingus-icon-icon.png') 16 32, auto; }}
+            .flatpickr-input {{ width: 100%; }}
         </style>
     </head>
     <body>
@@ -331,15 +330,11 @@ def getcode_map_full2(vacancies):
                         </div>
                         <div class="mb-3">
                             <label for="date-from">Filter From:</label>
-                            <!-- UPDATED: 202508150056_dateFormatFlatpickr: REPLACED -->
                             <input type="text" id="date-from" class="form-control flatpickr-input" value="{min_date_formatted}" data-min-date="{min_date_formatted}" data-max-date="{max_date_formatted}">
-                            <!-- UPDATED: 202508150056_dateFormatFlatpickr: REPLACED -->
                         </div>
                         <div class="mb-3">
                             <label for="date-to">Filter To:</label>
-                            <!-- UPDATED: 202508150056_dateFormatFlatpickr: REPLACED -->
                             <input type="text" id="date-to" class="form-control flatpickr-input" value="{max_date_formatted}" data-min-date="{min_date_formatted}" data-max-date="{max_date_formatted}">
-                            <!-- UPDATED: 202508150056_dateFormatFlatpickr: REPLACED -->
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -364,88 +359,155 @@ def getcode_map_full2(vacancies):
                     </div>
                 </div>
             </div>
-            <button class="toggle-btn" id="toggleBtn">▼</button>
+            <button class="toggle-btn-top" id="toggleBtn" title="Show/Hide Filters"><i class="bi bi-sliders"></i></button>
         </div>
+
+        <div class="side-panel right-panel" id="noAddressPanel">
+            <button class="toggle-btn-right" id="toggleNoAddressBtn" title="Vacancies without specified address">
+                <i class="bi bi-pin-map"></i>
+                <span id="noAddressCountBadge" class="badge bg-light text-dark">0</span>
+            </button>
+            <div class="panel-content">
+                <h5 class="border-bottom pb-2">Vacancies without Address</h5>
+                <div class="input-group my-3">
+                    <input type="text" id="noAddressSearch" class="form-control" placeholder="Search in this list...">
+                    <span class="input-group-text"><span id="noAddressVisibleCount">0</span>/<span id="noAddressTotalCount">0</span></span>
+                </div>
+                <div class="panel-list" id="noAddressList">
+                    <p class="text-muted">No vacancies found without a specific address.</p>
+                </div>
+            </div>
+        </div>
+
         <div id="map"></div>
 
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-        <!-- UPDATED: 202508150056_dateFormatFlatpickr: ADDED -->
         <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-        <!-- UPDATED: 202508150056_dateFormatFlatpickr: ADDED -->
         <script>
-        // UPDATED: 202508140300_dynamicheader: ADDED
+        // --- MODIFIED: Panel Toggle Logic ---
+        document.getElementById('toggleBtn').addEventListener('click', () => 
+            document.getElementById('filterPanel').classList.toggle('visible')
+        );
+        document.getElementById('toggleNoAddressBtn').addEventListener('click', () => 
+            document.getElementById('noAddressPanel').classList.toggle('visible')
+        );
+        
+        // ---UNCHANGED SCRIPT LOGIC (with new panel/sync logic)---
+        const vacancies = {getcode_vacanciesdata(vacancies)};
+        const vacanciesWithoutAddress = vacancies.filter(v => !v.has_address);
+        
+        let appliedVacancies = JSON.parse(localStorage.getItem('appliedVacancies')) || [];
+        if (!Array.isArray(appliedVacancies)) {{ appliedVacancies = []; }}
+
+        // --- MODIFIED: Unified 'applied' status logic for full sync ---
+        function masterToggleApply(url) {{
+            const index = appliedVacancies.indexOf(url);
+            if (index > -1) {{
+                appliedVacancies.splice(index, 1); // Remove if exists
+            }} else {{
+                appliedVacancies.push(url); // Add if not
+            }}
+            localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
+            updateUiForVacancy(url); // Update all UI parts for this vacancy
+        }}
+
+        function updateUiForVacancy(url) {{
+            const isApplied = appliedVacancies.includes(url);
+            
+            // 1. Update Map Marker Icon
+            const markerObj = markers.find(m => m.url === url);
+            if (markerObj) {{
+                markerObj.marker.setIcon(getMarkerIcon(markerObj.color, isApplied));
+            }}
+
+            // 2. Update all Checkboxes (in popups, in side panel)
+            const appliedStatusHTML = isApplied
+                ? '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>'
+                : '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
+            
+            document.querySelectorAll(`[data-url="${{url}}"]`).forEach(el => {{
+                el.innerHTML = appliedStatusHTML;
+            }});
+        }}
+        
+        // --- MODIFIED: Function to populate and manage the new panel ---
+        function initNoAddressPanel() {{
+            const listContainer = document.getElementById('noAddressList');
+            const searchInput = document.getElementById('noAddressSearch');
+            const totalCountEl = document.getElementById('noAddressTotalCount');
+            const visibleCountEl = document.getElementById('noAddressVisibleCount');
+            document.getElementById('noAddressCountBadge').textContent = vacanciesWithoutAddress.length;
+
+            if (vacanciesWithoutAddress.length > 0) {{
+                listContainer.innerHTML = '';
+                vacanciesWithoutAddress.forEach(vacancy => {{
+                    const isApplied = appliedVacancies.includes(vacancy.details_url);
+                    const appliedStatusHTML = isApplied
+                        ? '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>'
+                        : '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'vacancy-item';
+                    item.innerHTML = `
+                        <div class="vacancy-item-details">
+                            <a href="${{vacancy.details_url}}" target="_blank">${{vacancy.title}}</a>
+                            <p>${{vacancy.employee}} | ${{vacancy.salary_to_show}} PLN</p>
+                        </div>
+                        <div class="apply-toggle-container" data-url="${{vacancy.details_url}}" onclick="masterToggleApply(this.dataset.url)">
+                           ${{appliedStatusHTML}}
+                        </div>
+                    `;
+                    listContainer.appendChild(item);
+                }});
+            }}
+
+            const updateCounts = () => {{
+                const visibleItems = listContainer.querySelectorAll('.vacancy-item[style*="display: flex"], .vacancy-item:not([style])').length;
+                totalCountEl.textContent = vacanciesWithoutAddress.length;
+                visibleCountEl.textContent = visibleItems;
+            }};
+
+            searchInput.addEventListener('keyup', () => {{
+                const filter = searchInput.value.toLowerCase();
+                const items = listContainer.getElementsByClassName('vacancy-item');
+                for (let i = 0; i < items.length; i++) {{
+                    const title = items[i].querySelector('a').textContent.toLowerCase();
+                    if (title.includes(filter)) {{
+                        items[i].style.display = 'flex';
+                    }} else {{
+                        items[i].style.display = 'none';
+                    }}
+                }}
+                updateCounts();
+            }});
+            updateCounts();
+        }}
+        
+        // --- REST OF THE SCRIPT (Mostly unchanged from original) ---
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены константы для дат (из ранней версии для consistency в addMarkers)
         const minDate = '{min_date_formatted}';
         const maxDate = '{max_date_formatted}';
-        // UPDATED: 202508140300_dynamicheader: ADDED
-        let textFiltersActive = true;
-        const vacancies = {getcode_vacanciesdata(vacancies)};
+        //UPDATED: 202508151200_missingFuncs: ADDED
+
         const map = L.map('map').setView({centerpoint_coords_list_str}, 13);
-        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{maxZoom: 19}}).addTo(map);
+        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{maxZoom: 19, attribution: '© OpenStreetMap contributors'}}).addTo(map);
 
-        const binocularIcon = L.icon({{
-            iconUrl: 'https://icons.iconarchive.com/icons/iconka/business-finance/256/target-icon.png',
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32]
-        }});
-
+        const binocularIcon = L.icon({{ iconUrl: 'https://icons.iconarchive.com/icons/iconka/business-finance/256/target-icon.png', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] }});
         let markers = [];
         let centerCoords = {centerpoint_coords_list_str};
         let binocularMarker = null;
-        const radiusCircle = L.circle({centerpoint_coords_list_str}, {{
-            radius: {MAX_DISTANCE_AROUND_AREA_KM}000,
-            color: 'blue',
-            fillColor: 'blue',
-            fillOpacity: 0.1
-        }}).addTo(map);
-        let setRadiusMode = false;
-
+        const radiusCircle = L.circle({centerpoint_coords_list_str}, {{ radius: {MAX_DISTANCE_AROUND_AREA_KM}000, color: 'blue', fillOpacity: 0.1 }}).addTo(map);
+        
         let searchTags = [];
         let activeTags = new Set();
         let tagColors = {{}};
-        // UPDATED: 202508140142_fixedcolors: ADDED
         const availableColors = ['blue', 'gold', 'green', 'orange', 'yellow', 'violet', 'grey', 'black', 'red'];
-        // UPDATED: 202508140142_fixedcolors: ADDED
         const maxTags = 10;
         const storageKey = 'vacancyMapFilters';
-
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
-        let appliedVacancies = JSON.parse(localStorage.getItem('appliedVacancies')) || [];
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
-        // UPDATED: 202508141200_appliedErrorFix: ADDED
-        if (!Array.isArray(appliedVacancies)) {{
-            appliedVacancies = [];
-        }}
-        // UPDATED: 202508141200_appliedErrorFix: ADDED
-
-        // UPDATED: 202508150056_dateFormatFlatpickr: ADDED
-        flatpickr('#date-from', {{
-            dateFormat: 'Y-m-d',
-            defaultDate: '{min_date_formatted}',
-            minDate: '{min_date_formatted}',
-            maxDate: '{max_date_formatted}',
-            onChange: function(selectedDates, dateStr, instance) {{
-                updateFilters();
-            }}
-        }});
-        flatpickr('#date-to', {{
-            dateFormat: 'Y-m-d',
-            defaultDate: '{max_date_formatted}',
-            minDate: '{min_date_formatted}',
-            maxDate: '{max_date_formatted}',
-            onChange: function(selectedDates, dateStr, instance) {{
-                updateFilters();
-            }}
-        }});
-        // UPDATED: 202508150056_dateFormatFlatpickr: ADDED
-
-        // UPDATED: 202508142342_dateFormat: DELETED
-        // function formatDateInput(inputElement) {{ ... }}
-        // document.getElementById('date-from').addEventListener('change', (e) => {{ ... }});
-        // document.getElementById('date-to').addEventListener('change', (e) => {{ ... }});
-        // formatDateInput(document.getElementById('date-from'));
-        // formatDateInput(document.getElementById('date-to'));
-        // UPDATED: 202508142342_dateFormat: DELETED
+        let textFiltersActive = true;
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена переменная для режима установки радиуса (из ранней версии)
+        let setRadiusMode = false;
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
         function saveToLocalStorage() {{
             localStorage.setItem(storageKey, JSON.stringify({{
@@ -453,9 +515,7 @@ def getcode_map_full2(vacancies):
                 activeTags: Array.from(activeTags),
                 centerCoords: centerCoords,
                 tagColors: tagColors,
-                // UPDATED: 202508141600_textFilters: ADDED
                 textFiltersActive: textFiltersActive
-                // UPDATED: 202508141600_textFilters: ADDED
             }}));
         }}
 
@@ -466,7 +526,6 @@ def getcode_map_full2(vacancies):
                 searchTags = savedTags.slice(-maxTags);
                 activeTags = new Set(savedActive);
                 centerCoords = savedCoords || {centerpoint_coords_list_str};
-                // UPDATED: 202508140142_fixedcolors: UPDATED
                 tagColors = {{}};
                 savedTags.forEach(tag => {{
                     if (savedTagColors[tag] && availableColors.includes(savedTagColors[tag])) {{
@@ -477,10 +536,7 @@ def getcode_map_full2(vacancies):
                         tagColors[tag] = nextColor;
                     }}
                 }});
-                // UPDATED: 202508140142_fixedcolors: UPDATED
-                // UPDATED: 202508141600_textFilters: ADDED
                 textFiltersActive = savedTextFiltersActive !== undefined ? savedTextFiltersActive : true;
-                // UPDATED: 202508141600_textFilters: ADDED
                 updateToggleTextFiltersBtn();
                 updateCenterMarker();
                 renderTags();
@@ -488,6 +544,7 @@ def getcode_map_full2(vacancies):
             }}
         }}
 
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для обновления центрального маркера (из ранней версии для исправления ошибки)
         function updateCenterMarker() {{
             if (binocularMarker) {{
                 map.removeLayer(binocularMarker);
@@ -502,7 +559,9 @@ def getcode_map_full2(vacancies):
                 .openPopup();
             radiusCircle.setLatLng(centerCoords);
         }}
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены функции для управления режимом установки радиуса (из ранней версии, для кнопки set-radius-btn)
         function toggleSetRadiusMode() {{
             setRadiusMode = !setRadiusMode;
             const setRadiusBtn = document.getElementById('set-radius-btn');
@@ -523,17 +582,17 @@ def getcode_map_full2(vacancies):
             updateFilters();
             toggleSetRadiusMode();
         }}
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены функции для управления тегами (из ранней версии, для отображения текстовых фильтров)
         function addTag(text) {{
             if (text && !searchTags.includes(text)) {{
                 searchTags.push(text);
-                // UPDATED: 202508140142_fixedcolors: UPDATED
                 if (!tagColors[text]) {{
                     const usedColors = Object.values(tagColors);
                     const nextColor = availableColors.find(color => !usedColors.includes(color)) || 'red';
                     tagColors[text] = nextColor;
                 }}
-                // UPDATED: 202508140142_fixedcolors: UPDATED
                 if (searchTags.length > maxTags) {{
                     const removedTag = searchTags.shift();
                     activeTags.delete(removedTag);
@@ -552,9 +611,7 @@ def getcode_map_full2(vacancies):
             }} else {{
                 activeTags.add(text);
             }}
-            // UPDATED: 202508141600_textFilters: UPDATED
             textFiltersActive = true;
-            // UPDATED: 202508141600_textFilters: UPDATED
             updateToggleTextFiltersBtn();
             renderTags();
             saveToLocalStorage();
@@ -565,9 +622,7 @@ def getcode_map_full2(vacancies):
             searchTags = searchTags.filter(tag => tag !== text);
             activeTags.delete(text);
             delete tagColors[text];
-            // UPDATED: 202508141600_textFilters: UPDATED
             textFiltersActive = activeTags.size > 0;
-            // UPDATED: 202508141600_textFilters: UPDATED
             updateToggleTextFiltersBtn();
             renderTags();
             saveToLocalStorage();
@@ -579,11 +634,9 @@ def getcode_map_full2(vacancies):
             container.innerHTML = '';
             searchTags.forEach(tag => {{
                 const btn = document.createElement('button');
-                // UPDATED: 202508141600_textFilters: UPDATED
                 btn.className = 'tag-btn' + (activeTags.has(tag) && textFiltersActive ? ' active' : '');
                 btn.style.backgroundColor = (activeTags.has(tag) && textFiltersActive) ? tagColors[tag] : '#e0e0e0';
                 btn.style.color = (activeTags.has(tag) && textFiltersActive) ? '#ffffff' : '#212529';
-                // UPDATED: 202508141600_textFilters: UPDATED
                 btn.textContent = tag;
                 btn.onclick = () => toggleTag(tag);
 
@@ -599,30 +652,8 @@ def getcode_map_full2(vacancies):
                 container.appendChild(btn);
             }});
         }}
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
-        function toggleApply(el) {{
-            let url = el.dataset.url;
-            if (appliedVacancies.includes(url)) {{
-                appliedVacancies = appliedVacancies.filter(u => u !== url);
-                el.innerHTML = '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
-            }} else {{
-                appliedVacancies.push(url);
-                el.innerHTML = '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>';
-            }}
-            localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
-            // UPDATED: 202508141200_appliedIcon: ADDED
-            const markerObj = markers.find(m => m.url === url);
-            if (markerObj) {{
-                const isApplied = appliedVacancies.includes(url);
-                const newIcon = getMarkerIcon(markerObj.color, isApplied);
-                markerObj.marker.setIcon(newIcon);
-            }}
-            // UPDATED: 202508141200_appliedIcon: ADDED
-        }}
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
-
-        // UPDATED: 202508141200_appliedIcon: ADDED
         function getMarkerIcon(color, isApplied) {{
             if (isApplied) {{
                 return L.icon({{
@@ -642,14 +673,12 @@ def getcode_map_full2(vacancies):
                 }});
             }}
         }}
-        // UPDATED: 202508141200_appliedIcon: ADDED
 
         function addMarkers(minSalary, maxDistance, searchText = '', excludeText = '', selectedSource = 'all', dateFrom = '', dateTo = '') {{
             markers.forEach(({{ marker }}) => map.removeLayer(marker));
             markers = [];
 
             vacancies.forEach(vacancy => {{
-                // UPDATED: 202508140142_fixedcolors: UPDATED
                 let markerColor = vacancy.is_new && (!textFiltersActive || activeTags.size === 0) ? 'red' : 'blue';
                 if (textFiltersActive && activeTags.size > 0) {{
                     for (let tag of activeTags) {{
@@ -659,7 +688,6 @@ def getcode_map_full2(vacancies):
                         }}
                     }}
                 }}
-                // UPDATED: 202508140142_fixedcolors: UPDATED
                 const salary = vacancy.salary;
                 const distance = map.distance([vacancy.latitude, vacancy.longitude], centerCoords);
                 const title = vacancy.title.toLowerCase();
@@ -671,7 +699,6 @@ def getcode_map_full2(vacancies):
                 const dateFromFormatted = dateFrom.replace(/-/g, '');
                 const dateToFormatted = dateTo.replace(/-/g, '');
 
-                // UPDATED: 202508141600_textFilters: UPDATED
                 let matchesTag = !textFiltersActive || activeTags.size === 0;
                 if (textFiltersActive && activeTags.size > 0) {{
                     for (let tag of activeTags) {{
@@ -681,7 +708,6 @@ def getcode_map_full2(vacancies):
                         }}
                     }}
                 }}
-                // UPDATED: 202508141600_textFilters: UPDATED
 
                 if (salary >= minSalary && 
                     distance <= maxDistance && 
@@ -691,22 +717,16 @@ def getcode_map_full2(vacancies):
                     (dateFrom === '' || parseDate >= dateFromFormatted) && 
                     (dateTo === '' || parseDate <= dateToFormatted) &&
                     matchesTag) {{
-                    // UPDATED: 202508141200_appliedIcon: ADDED
                     const isApplied = appliedVacancies.includes(vacancy.details_url);
                     const icon = getMarkerIcon(markerColor, isApplied);
-                    // UPDATED: 202508141200_appliedIcon: ADDED
-                    const marker = L.marker([vacancy.latitude, vacancy.longitude], {{
-                        // UPDATED: 202508141200_appliedIcon: UPDATED
-                        icon: icon
-                        // UPDATED: 202508141200_appliedIcon: UPDATED
-                    }}).addTo(map);
+                    const marker = L.marker([vacancy.latitude, vacancy.longitude], {{ icon: icon }}).addTo(map);
 
-                    // UPDATED: 202508141200_dynamicPopup: UPDATED
                     marker.bindPopup(() => {{
-                        let applyHtml = appliedVacancies.includes(vacancy.details_url) ? 
-                            '<div class="d-flex justify-content-center align-items-center mt-2"><div class="apply-status" data-url="' + vacancy.details_url + '" onclick="toggleApply(this)"><i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span></div></div>' :
-                            '<div class="d-flex justify-content-center align-items-center mt-2"><div class="apply-status" data-url="' + vacancy.details_url + '" onclick="toggleApply(this)"><i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span></div></div>';
-
+                        const isAppliedNow = appliedVacancies.includes(vacancy.details_url);
+                        const appliedStatusHTML = isAppliedNow
+                            ? '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>'
+                            : '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
+                        
                         return (
                             '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
                             '<b><h5>Parsed: </b>' + vacancy.date_parsing + '</h5><br>' +
@@ -715,47 +735,39 @@ def getcode_map_full2(vacancies):
                             '<b>Salary: </b>' + vacancy.salary_to_show + '<br>' +
                             '<b>Source: </b>' + vacancy.source + '<br>' +
                             '<a href="' + vacancy.details_url + '" target="_blank">Details...</a>' +
-                            applyHtml
+                            `<div class="d-flex justify-content-center align-items-center mt-2"><div class="apply-toggle-container" data-url="${{vacancy.details_url}}" onclick="masterToggleApply(this.dataset.url)">${{appliedStatusHTML}}</div></div>`
                         );
                     }});
-                    // UPDATED: 202508141200_dynamicPopup: UPDATED
-
-                    // UPDATED: 202508141200_appliedIcon: UPDATED
                     markers.push({{ marker, is_new: vacancy.is_new, url: vacancy.details_url, color: markerColor }});
-                    // UPDATED: 202508141200_appliedIcon: UPDATED
                 }}
             }});
 
             updateCenterMarker();
-            // UPDATED: 202508140300_dynamicheader: ADDED
+            //UPDATED: 202508151200_missingFuncs: ADDED - Использование minDate/maxDate вместо строковых литералов (синхронизация с ранней версией)
             const effectiveDateFrom = dateFrom || minDate;
             const effectiveDateTo = dateTo || maxDate;
+            //UPDATED: 202508151200_missingFuncs: ADDED
             const daysPeriod = Math.ceil((new Date(effectiveDateTo) - new Date(effectiveDateFrom)) / (1000 * 60 * 60 * 24)) + 1;
             const vacancyCount = markers.length;
             const radiusKm = parseInt(maxDistance / 1000);
             document.getElementById('vacancy-header').textContent = `${{vacancyCount}} job offers in radius of ${{radiusKm}} km for last ${{daysPeriod}} days`;
-            // UPDATED: 202508140300_dynamicheader: ADDED
         }}
-
-        // UPDATED: 202508141545_filterMarkersFix: UPDATED
+        
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для фильтрации маркеров (из ранней версии, для кнопок New/Old/All)
         function filterMarkers(type) {{
             markers.forEach(({{ marker, is_new }}) => {{
                 if (type === 'new' && !is_new) {{
-                    map.removeLayer(marker);
+                    map.removeLayer(marker.marker);
                 }} else if (type === 'old' && is_new) {{
-                    map.removeLayer(marker);
-                }} else if (!map.hasLayer(marker)) {{
-                    map.addLayer(marker);
+                    map.removeLayer(marker.marker);
+                }} else if (!map.hasLayer(marker.marker)) {{
+                    map.addLayer(marker.marker);
                 }}
             }});
         }}
-        // UPDATED: 202508141545_filterMarkersFix: UPDATED
-
-        function updateCircleRadius(radius) {{
-            radiusCircle.setRadius(radius);
-            radiusCircle.setLatLng(centerCoords);
-        }}
-
+        //UPDATED: 202508151200_missingFuncs: ADDED
+        
+        // ... (The rest of the original JS functions: updateFilters, event listeners, etc.)
         function updateFilters() {{
             const minSalary = parseInt(document.getElementById('salary-slider').value, 10);
             const radius = parseInt(document.getElementById('radius-slider').value, 10) * 1000;
@@ -766,13 +778,35 @@ def getcode_map_full2(vacancies):
             const dateTo = document.getElementById('date-to').value;
             document.getElementById('salary-value').textContent = `${{minSalary}} PLN`;
             document.getElementById('radius-value').textContent = `${{parseInt(radius / 1000)}} km`;
-            updateCircleRadius(radius);
+            radiusCircle.setRadius(radius);
             addMarkers(minSalary, radius, searchText, excludeText, selectedSource, dateFrom, dateTo);
         }}
 
         document.getElementById('salary-slider').addEventListener('input', updateFilters);
         document.getElementById('radius-slider').addEventListener('input', updateFilters);
         document.getElementById('search-input').addEventListener('input', updateFilters);
+        document.getElementById('exclude-input').addEventListener('input', updateFilters);
+        document.getElementById('source-select').addEventListener('change', updateFilters);
+        
+        flatpickr('#date-from', {{ dateFormat: 'Y-m-d', defaultDate: '{min_date_formatted}', onChange: updateFilters }});
+        flatpickr('#date-to', {{ dateFormat: 'Y-m-d', defaultDate: '{max_date_formatted}', onChange: updateFilters }});
+
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для обновления кнопки текстовых фильтров (уже была, но для полноты)
+        function updateToggleTextFiltersBtn() {{
+            const btn = document.getElementById('toggle-text-filters-btn');
+            if (textFiltersActive) {{
+                btn.textContent = 'Deactivate Text Filters';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-danger');
+            }} else {{
+                btn.textContent = 'Activate Text Filters';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-success');
+            }}
+        }}
+        //UPDATED: 202508151200_missingFuncs: ADDED
+
+        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены недостающие обработчики событий (из ранней версии, для тегов, радиуса и фильтров)
         document.getElementById('search-input').addEventListener('keyup', (e) => {{
             if (e.key === 'Enter') {{
                 const text = e.target.value.trim();
@@ -789,15 +823,8 @@ def getcode_map_full2(vacancies):
                 document.getElementById('search-input').value = '';
             }}
         }});
-        document.getElementById('exclude-input').addEventListener('input', updateFilters);
-        document.getElementById('source-select').addEventListener('change', updateFilters);
-        // UPDATED: 202508150056_dateFormatFlatpickr: DELETED
-        // document.getElementById('date-from').addEventListener('change', updateFilters);
-        // document.getElementById('date-to').addEventListener('change', updateFilters);
-        // UPDATED: 202508150056_dateFormatFlatpickr: DELETED
         document.getElementById('set-radius-btn').addEventListener('click', toggleSetRadiusMode);
         document.getElementById('toggle-text-filters-btn').addEventListener('click', () => {{
-            // UPDATED: 202508141600_textFilters: UPDATED
             textFiltersActive = !textFiltersActive;
             if (!textFiltersActive) {{
                 activeTags.clear();
@@ -808,51 +835,26 @@ def getcode_map_full2(vacancies):
             renderTags();
             saveToLocalStorage();
             updateFilters();
-            // UPDATED: 202508141600_textFilters: UPDATED
         }});
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        // UPDATED: 202508141600_textFilters: UPDATED
-        function updateToggleTextFiltersBtn() {{
-            const btn = document.getElementById('toggle-text-filters-btn');
-            if (textFiltersActive) {{
-                btn.textContent = 'Deactivate Text Filters';
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-danger');
-            }} else {{
-                btn.textContent = 'Activate Text Filters';
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-success');
-            }}
-        }}
-        // UPDATED: 202508141600_textFilters: UPDATED
-
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        //UPDATED: 202508151200_missingFuncs: ADDED - Фильтрация appliedVacancies по текущим вакансиям (из ранней версии)
         const currentUrls = vacancies.map(v => v.details_url);
         appliedVacancies = appliedVacancies.filter(url => currentUrls.includes(url));
         localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
-        // UPDATED: 202508141200_appliedCheckbox: ADDED
+        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        loadFromLocalStorage();
-        addMarkers(0, {MAX_DISTANCE_AROUND_AREA_KM}000);
-        
-        // выдвигаем либо прячем контейнер с фильтрами
-        document.getElementById('toggleBtn').addEventListener('click', () => {{
-            const panel = document.getElementById('filterPanel');
-            panel.classList.toggle('hidden');
-    
-            const btn = document.getElementById('toggleBtn');
-            if (panel.classList.contains('hidden')) {{
-                btn.textContent = '▲';
-            }} else {{
-                btn.textContent = '▼';
-            }}
-        }});
+        // Initial setup
+        window.onload = () => {{
+            loadFromLocalStorage();
+            initNoAddressPanel();
+            updateFilters();
+        }};
         </script>
     </body>
     </html>
     '''
     return s
-
 
 html_content = getcode_map_full2(vacancies)
 html_file_path = settings.get_htmlmapfilepath_fc(PLATFORMNAME_str)
