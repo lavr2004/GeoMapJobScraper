@@ -484,10 +484,8 @@ def getcode_map_full2(vacancies):
         }}
         
         // --- REST OF THE SCRIPT (Mostly unchanged from original) ---
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены константы для дат (из ранней версии для consistency в addMarkers)
         const minDate = '{min_date_formatted}';
         const maxDate = '{max_date_formatted}';
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
         const map = L.map('map').setView({centerpoint_coords_list_str}, 13);
         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{maxZoom: 19, attribution: '© OpenStreetMap contributors'}}).addTo(map);
@@ -505,9 +503,7 @@ def getcode_map_full2(vacancies):
         const maxTags = 10;
         const storageKey = 'vacancyMapFilters';
         let textFiltersActive = true;
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена переменная для режима установки радиуса (из ранней версии)
         let setRadiusMode = false;
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
         function saveToLocalStorage() {{
             localStorage.setItem(storageKey, JSON.stringify({{
@@ -544,7 +540,6 @@ def getcode_map_full2(vacancies):
             }}
         }}
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для обновления центрального маркера (из ранней версии для исправления ошибки)
         function updateCenterMarker() {{
             if (binocularMarker) {{
                 map.removeLayer(binocularMarker);
@@ -559,9 +554,7 @@ def getcode_map_full2(vacancies):
                 .openPopup();
             radiusCircle.setLatLng(centerCoords);
         }}
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены функции для управления режимом установки радиуса (из ранней версии, для кнопки set-radius-btn)
         function toggleSetRadiusMode() {{
             setRadiusMode = !setRadiusMode;
             const setRadiusBtn = document.getElementById('set-radius-btn');
@@ -582,9 +575,7 @@ def getcode_map_full2(vacancies):
             updateFilters();
             toggleSetRadiusMode();
         }}
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены функции для управления тегами (из ранней версии, для отображения текстовых фильтров)
         function addTag(text) {{
             if (text && !searchTags.includes(text)) {{
                 searchTags.push(text);
@@ -599,6 +590,8 @@ def getcode_map_full2(vacancies):
                     delete tagColors[removedTag];
                 }}
                 activeTags.add(text);
+                textFiltersActive = true;
+                activeTags = new Set(searchTags);
                 renderTags();
                 saveToLocalStorage();
                 updateFilters();
@@ -652,7 +645,6 @@ def getcode_map_full2(vacancies):
                 container.appendChild(btn);
             }});
         }}
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
         function getMarkerIcon(color, isApplied) {{
             if (isApplied) {{
@@ -743,17 +735,14 @@ def getcode_map_full2(vacancies):
             }});
 
             updateCenterMarker();
-            //UPDATED: 202508151200_missingFuncs: ADDED - Использование minDate/maxDate вместо строковых литералов (синхронизация с ранней версией)
             const effectiveDateFrom = dateFrom || minDate;
             const effectiveDateTo = dateTo || maxDate;
-            //UPDATED: 202508151200_missingFuncs: ADDED
             const daysPeriod = Math.ceil((new Date(effectiveDateTo) - new Date(effectiveDateFrom)) / (1000 * 60 * 60 * 24)) + 1;
             const vacancyCount = markers.length;
             const radiusKm = parseInt(maxDistance / 1000);
             document.getElementById('vacancy-header').textContent = `${{vacancyCount}} job offers in radius of ${{radiusKm}} km for last ${{daysPeriod}} days`;
         }}
         
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для фильтрации маркеров (из ранней версии, для кнопок New/Old/All)
         function filterMarkers(type) {{
             markers.forEach(({{ marker, is_new }}) => {{
                 if (type === 'new' && !is_new) {{
@@ -765,9 +754,7 @@ def getcode_map_full2(vacancies):
                 }}
             }});
         }}
-        //UPDATED: 202508151200_missingFuncs: ADDED
         
-        // ... (The rest of the original JS functions: updateFilters, event listeners, etc.)
         function updateFilters() {{
             const minSalary = parseInt(document.getElementById('salary-slider').value, 10);
             const radius = parseInt(document.getElementById('radius-slider').value, 10) * 1000;
@@ -784,14 +771,15 @@ def getcode_map_full2(vacancies):
 
         document.getElementById('salary-slider').addEventListener('input', updateFilters);
         document.getElementById('radius-slider').addEventListener('input', updateFilters);
-        document.getElementById('search-input').addEventListener('input', updateFilters);
+        //UPDATED: 202508161200_disableRealtimeSearch: DELETED - Удалён слушатель 'input' для поля id="search-input" чтобы предотвратить реал-тайм обновления пинов и заголовка при каждом вводе буквы
+        // document.getElementById('search-input').addEventListener('input', updateFilters);
+        //UPDATED: 202508161200_disableRealtimeSearch: DELETED
         document.getElementById('exclude-input').addEventListener('input', updateFilters);
         document.getElementById('source-select').addEventListener('change', updateFilters);
         
         flatpickr('#date-from', {{ dateFormat: 'Y-m-d', defaultDate: '{min_date_formatted}', onChange: updateFilters }});
         flatpickr('#date-to', {{ dateFormat: 'Y-m-d', defaultDate: '{max_date_formatted}', onChange: updateFilters }});
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлена функция для обновления кнопки текстовых фильтров (уже была, но для полноты)
         function updateToggleTextFiltersBtn() {{
             const btn = document.getElementById('toggle-text-filters-btn');
             if (textFiltersActive) {{
@@ -804,23 +792,21 @@ def getcode_map_full2(vacancies):
                 btn.classList.add('btn-success');
             }}
         }}
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Добавлены недостающие обработчики событий (из ранней версии, для тегов, радиуса и фильтров)
         document.getElementById('search-input').addEventListener('keyup', (e) => {{
             if (e.key === 'Enter') {{
                 const text = e.target.value.trim();
                 if (text) {{
-                    addTag(text);
                     e.target.value = '';
+                    addTag(text);
                 }}
             }}
         }});
         document.getElementById('save-filter-btn').addEventListener('click', () => {{
             const text = document.getElementById('search-input').value.trim();
             if (text) {{
-                addTag(text);
                 document.getElementById('search-input').value = '';
+                addTag(text);
             }}
         }});
         document.getElementById('set-radius-btn').addEventListener('click', toggleSetRadiusMode);
@@ -836,13 +822,10 @@ def getcode_map_full2(vacancies):
             saveToLocalStorage();
             updateFilters();
         }});
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
-        //UPDATED: 202508151200_missingFuncs: ADDED - Фильтрация appliedVacancies по текущим вакансиям (из ранней версии)
         const currentUrls = vacancies.map(v => v.details_url);
         appliedVacancies = appliedVacancies.filter(url => currentUrls.includes(url));
         localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
-        //UPDATED: 202508151200_missingFuncs: ADDED
 
         // Initial setup
         window.onload = () => {{
