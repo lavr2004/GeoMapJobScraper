@@ -453,21 +453,51 @@ def getcode_map_full2(vacancies):
         }}
         
         // --- MODIFIED: Function to populate and manage the new panel ---
-        function initNoAddressPanel() {{
+        //UPDATED: 202508210502_panelfilterfix: UPDATED - Исправлена функция initNoAddressPanel для синхронизации фильтров и устранения ReferenceError
+        function initNoAddressPanel(minSalary = 0, searchText = '', excludeText = '', selectedSource = 'all', dateFrom = '{min_date_formatted}', dateTo = '{max_date_formatted}', activeTags = new Set(), textFiltersActive = true) {{
             const listContainer = document.getElementById('noAddressList');
             const searchInput = document.getElementById('noAddressSearch');
             const totalCountEl = document.getElementById('noAddressTotalCount');
             const visibleCountEl = document.getElementById('noAddressVisibleCount');
-            document.getElementById('noAddressCountBadge').textContent = vacanciesWithoutAddress.length;
+            const noAddressCountBadge = document.getElementById('noAddressCountBadge');
+            
+            listContainer.innerHTML = '';
+            let visibleVacancies = 0;
 
-            if (vacanciesWithoutAddress.length > 0) {{
-                listContainer.innerHTML = '';
-                vacanciesWithoutAddress.forEach(vacancy => {{
+            vacanciesWithoutAddress.forEach(vacancy => {{
+                const salary = vacancy.salary;
+                const title = vacancy.title.toLowerCase();
+                const search = searchText.toLowerCase();
+                const exclude = excludeText.toLowerCase();
+                const source = vacancy.source;
+                const parseDate = vacancy.date_parsing.replace('_', '').slice(0, 8);
+
+                const dateFromFormatted = dateFrom.replace(/-/g, '');
+                const dateToFormatted = dateTo.replace(/-/g, '');
+
+                let matchesTag = !textFiltersActive || activeTags.size === 0;
+                if (textFiltersActive && activeTags.size > 0) {{
+                    for (let tag of activeTags) {{
+                        if (title.includes(tag.toLowerCase())) {{
+                            matchesTag = true;
+                            break;
+                        }}
+                    }}
+                }}
+
+                // Применяем те же фильтры, что и для карты, кроме фильтра по расстоянию
+                if (salary >= minSalary &&
+                    (search === '' || title.includes(search)) &&
+                    (exclude === '' || !title.includes(exclude)) &&
+                    (selectedSource === 'all' || source === selectedSource) &&
+                    (dateFrom === '' || parseDate >= dateFromFormatted) &&
+                    (dateTo === '' || parseDate <= dateToFormatted) &&
+                    matchesTag) {{
                     const isApplied = appliedVacancies.includes(vacancy.details_url);
                     const appliedStatusHTML = isApplied
                         ? '<i class="bi bi-check-square-fill" style="font-size: 1.5rem; color: green;"></i><span style="font-weight: bold; margin-left: 0.5rem; color: green;">applied</span>'
                         : '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
-                    
+
                     const item = document.createElement('div');
                     item.className = 'vacancy-item';
                     item.innerHTML = `
@@ -476,34 +506,37 @@ def getcode_map_full2(vacancies):
                             <p>${{vacancy.employee}} | ${{vacancy.salary_to_show}} PLN</p>
                         </div>
                         <div class="apply-toggle-container" data-url="${{vacancy.details_url}}" onclick="masterToggleApply(this.dataset.url)">
-                           ${{appliedStatusHTML}}
+                            ${{appliedStatusHTML}}
                         </div>
                     `;
                     listContainer.appendChild(item);
-                }});
-            }}
+                    visibleVacancies++;
+                }}
+            }});
 
-            const updateCounts = () => {{
-                const visibleItems = listContainer.querySelectorAll('.vacancy-item[style*="display: flex"], .vacancy-item:not([style])').length;
-                totalCountEl.textContent = vacanciesWithoutAddress.length;
-                visibleCountEl.textContent = visibleItems;
-            }};
+            // Обновляем счётчики
+            noAddressCountBadge.textContent = visibleVacancies;
+            totalCountEl.textContent = vacanciesWithoutAddress.length;
+            visibleCountEl.textContent = visibleVacancies;
 
+            // Фильтрация по локальному поиску в панели
             searchInput.addEventListener('keyup', () => {{
                 const filter = searchInput.value.toLowerCase();
                 const items = listContainer.getElementsByClassName('vacancy-item');
+                let visibleCount = 0;
                 for (let i = 0; i < items.length; i++) {{
                     const title = items[i].querySelector('a').textContent.toLowerCase();
                     if (title.includes(filter)) {{
                         items[i].style.display = 'flex';
+                        visibleCount++;
                     }} else {{
                         items[i].style.display = 'none';
                     }}
                 }}
-                updateCounts();
+                visibleCountEl.textContent = visibleCount;
             }});
-            updateCounts();
         }}
+        //UPDATED: 202508210502_panelfilterfix: UPDATED
         
         // --- REST OF THE SCRIPT (Mostly unchanged from original) ---
         const minDate = '{min_date_formatted}';
@@ -781,6 +814,7 @@ def getcode_map_full2(vacancies):
             }});
         }}
         
+        //UPDATED: 202508210502_panelfilterfix: UPDATED - Обновлена функция updateFilters для корректной синхронизации фильтров
         function updateFilters() {{
             const minSalary = parseInt(document.getElementById('salary-slider').value, 10);
             const radius = parseInt(document.getElementById('radius-slider').value, 10) * 1000;
@@ -793,7 +827,9 @@ def getcode_map_full2(vacancies):
             document.getElementById('radius-value').textContent = `${{parseInt(radius / 1000)}} km`;
             radiusCircle.setRadius(radius);
             addMarkers(minSalary, radius, searchText, excludeText, selectedSource, dateFrom, dateTo);
+            initNoAddressPanel(minSalary, searchText, excludeText, selectedSource, dateFrom, dateTo, activeTags, textFiltersActive);
         }}
+        //UPDATED: 202508210502_panelfilterfix: UPDATED
 
         document.getElementById('salary-slider').addEventListener('input', updateFilters);
         document.getElementById('radius-slider').addEventListener('input', updateFilters);
@@ -853,12 +889,19 @@ def getcode_map_full2(vacancies):
         appliedVacancies = appliedVacancies.filter(url => currentUrls.includes(url));
         localStorage.setItem('appliedVacancies', JSON.stringify(appliedVacancies));
 
-        // Initial setup
+        //UPDATED: 202508210502_panelfilterfix: UPDATED - Обновлен начальный вызов для корректной инициализации панели
         window.onload = () => {{
             loadFromLocalStorage();
-            initNoAddressPanel();
+            const minSalary = parseInt(document.getElementById('salary-slider').value, 10) || 0;
+            const searchText = document.getElementById('search-input').value || '';
+            const excludeText = document.getElementById('exclude-input').value || '';
+            const selectedSource = document.getElementById('source-select').value || 'all';
+            const dateFrom = document.getElementById('date-from').value || '{min_date_formatted}';
+            const dateTo = document.getElementById('date-to').value || '{max_date_formatted}';
+            initNoAddressPanel(minSalary, searchText, excludeText, selectedSource, dateFrom, dateTo, activeTags, textFiltersActive);
             updateFilters();
         }};
+        //UPDATED: 202508210502_panelfilterfix: UPDATED
         </script>
     </body>
     </html>
