@@ -1,7 +1,8 @@
 import requests
+from bin.settings import DEFAULT_COORDINATES_LATITUDE, DEFAULT_COORDINATES_LONGITUDE
 
 def get_coordinates_latlon_fc(address, nominatim_url):
-    latitude, longitude = 0, 0
+    latitude, longitude = DEFAULT_COORDINATES_LATITUDE, DEFAULT_COORDINATES_LONGITUDE
 
     params = {"q": address, "format": "json", "addressdetails": 1}
     headers = {

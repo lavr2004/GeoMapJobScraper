@@ -427,8 +427,8 @@ import json
 def getcode_vacanciesdata(vacancies):
     max_parseiteration_id = max(vacancies, key=lambda x: x[6])[6] if vacancies else 0
 
-    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != "None" or str(vacancy[9]) != None else ""}"
-    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != "None" else ""}"
+    country_beginningaddress_lambda = lambda vacancy: f"{str(vacancy[9]) if str(vacancy[9]) or str(vacancy[9]) != 'None' or str(vacancy[9]) != None else ''}"
+    middlepartaddress_lambda = lambda vacancy, index: f", {str(vacancy[index]) if str(vacancy[index]) or str(vacancy[index]) != 'None' else ''}"
     street_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 7)
     building_middleaddress_lambda = lambda vacancy: middlepartaddress_lambda(vacancy, 8)
     

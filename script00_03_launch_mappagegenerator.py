@@ -13,8 +13,8 @@ MAX_ALL_JOBS_COUNT_NOT_FILTERED = 10000
 MAX_COUNT_OF_JOBS_FILTERED = 10000
 LAST_MAX_COUNT_OF_DAYS_PERIOD = 14
 
-CENTRALPOINT_COORDINATES_LAT = 52.2297  # Центр Варшавы
-CENTRALPOINT_COORDINATES_LON = 21.0122  # Центр Варшавы
+CENTRALPOINT_COORDINATES_LAT = 52.2297  # Центр Варшавы - 52.2053382
+CENTRALPOINT_COORDINATES_LON = 21.0122  # Центр Варшавы - 21.0745384
 DEFAULT_COORDINATES_LAT = CENTRALPOINT_COORDINATES_LAT
 DEFAULT_COORDINATES_LON = CENTRALPOINT_COORDINATES_LON
 
@@ -44,14 +44,33 @@ def generate_pin_offsets(vacancies_list, radius=0.00015):
         new_vacancies_list.append(tuple(vacancy_list))
     return new_vacancies_list
 
+#//UPDATED: 202508202311_defaultcoords: UPDATED - Обновлена функция для проверки дополнительных дефолтных координат и возврата флага
+def assign_default_coordinates(lat, lon):
+    """
+    Присваивает дефолтные координаты для вакансий без координат или с координатами, равными общим координатам Варшавы.
+    Возвращает кортеж (lat, lon, is_default), где is_default указывает, являются ли координаты дефолтными.
+    """
+    is_default = False
+    if not lat or not lon:
+        lat = DEFAULT_COORDINATES_LAT
+        lon = DEFAULT_COORDINATES_LON
+        is_default = True
+    elif (lat == 52.2053382 and lon == 21.0745384) or \
+            (lat == 52.22959935742319 and lon == 21.01208877468034) or \
+            (lat == 52.23191417658431 and lon == 21.00686832501021):
+        lat = DEFAULT_COORDINATES_LAT
+        lon = DEFAULT_COORDINATES_LON
+        is_default = True
+    return lat, lon, is_default
+#//UPDATED: 202508202311_defaultcoords: UPDATED
+
+#//UPDATED: 202508202319_fixunpackerror: UPDATED - Исправлена ошибка распаковки из-за нового возвращаемого значения assign_default_coordinates
 def add_offset_for_same_vacancies_coordinates(vacancies):
     seen_coords = {}
     processed_pins = []
     for vacancy_tuple in vacancies:
         lat, lon = vacancy_tuple[3], vacancy_tuple[4]
-        if not lat or not lon:
-            lat = DEFAULT_COORDINATES_LAT
-            lon = DEFAULT_COORDINATES_LON
+        lat, lon, _ = assign_default_coordinates(lat, lon)  #//UPDATED: 202508202319_fixunpackerror: REPLACED - Игнорируем флаг is_default
         if (lat, lon) in seen_coords:
             seen_coords[(lat, lon)].append(list(vacancy_tuple))
         else:
@@ -62,30 +81,31 @@ def add_offset_for_same_vacancies_coordinates(vacancies):
         for i in new_vacancies_lst_lst:
             processed_pins.append(i)
     return processed_pins
+#//UPDATED: 202508202319_fixunpackerror: UPDATED
 
+#//UPDATED: 202508202311_defaultcoords: UPDATED - Обновлена функция для обработки флага is_default
 def filter_vacancies(vacancies, reference_point, max_distance_km=3):
     filtered_vacancies = []
     for vacancy in vacancies:
         temp = list(vacancy)
         lat = temp[3]
         lon = temp[4]
-        if not lat or not lon:
-            lat = DEFAULT_COORDINATES_LAT
-            lon = DEFAULT_COORDINATES_LON
-        if lat == 52.2053382 and lon == 21.0745384:
-            lat = CENTRALPOINT_COORDINATES_LAT
-            lon = CENTRALPOINT_COORDINATES_LON
+
+        lat, lon, is_default = assign_default_coordinates(lat, lon)  #//UPDATED: 202508202311_defaultcoords: REPLACED - Добавлен флаг is_default
+
         vacancy_coords = (lat, lon)
         distance = geodesic(reference_point, vacancy_coords).km
         if distance <= max_distance_km:
             temp[3] = lat
             temp[4] = lon
+            temp.append(is_default)  #//UPDATED: 202508202311_defaultcoords: ADDED - Добавляем флаг is_default в данные вакансии
             vacancy = tuple(temp)
             filtered_vacancies.append(vacancy)
     print(f"OK - fetched {len(filtered_vacancies)} vacancies from database")
     filtered_vacancies = add_offset_for_same_vacancies_coordinates(filtered_vacancies)
     print(f"OK - {len(filtered_vacancies)} vacancies stay after processing")
     return filtered_vacancies
+#//UPDATED: 202508202311_defaultcoords: UPDATED
 
 # Подключаемся к базе данных
 conn = sqlite3.connect(FILEPATH_DATABASE)
@@ -157,7 +177,9 @@ def getcode_vacanciesdata(vacancies):
             'source': str(vacancy[9]),
             'date_parsing': str(vacancy[10]),
             'details_url': get_details_url(str(vacancy[9]), vacancy[11]),
-            'has_address': bool(vacancy[7] and str(vacancy[7]).strip())
+            #'has_address': bool(vacancy[7] and str(vacancy[7]).strip() and not vacancy[12])  #//UPDATED: 202508202311_defaultcoords: REPLACED - Учитываем is_default
+            #'has_address': bool(not vacancy[12] or (vacancy[7] and str(vacancy[7]).strip()))  #//UPDATED: 202508210001_addresslogic: REPLACED - has_address True, если координаты не дефолтные или есть адрес
+            'has_address': not vacancy[12]  #//UPDATED: 202508210007_addresslogic: REPLACED - has_address True, если координаты не дефолтные
         }
         for vacancy in vacancies
     ]
@@ -701,7 +723,8 @@ def getcode_map_full2(vacancies):
                     }}
                 }}
 
-                if (salary >= minSalary && 
+                if (vacancy.has_address &&
+                    salary >= minSalary && 
                     distance <= maxDistance && 
                     (search === '' || title.includes(search)) && 
                     (exclude === '' || !title.includes(exclude)) && 
@@ -720,6 +743,9 @@ def getcode_map_full2(vacancies):
                             : '<i class="bi bi-square" style="font-size: 1.5rem; color: black;"></i><span style="font-weight: bold; margin-left: 0.5rem;">not applied</span>';
                         
                         return (
+                            '<b><h5>ID: </b>' + vacancy.id + '</h5><br>' +
+                            '<b><h5>latitude: </b>' + vacancy.latitude + '</h5><br>' +
+                            '<b><h5>longitude: </b>' + vacancy.longitude + '</h5><br>' +
                             '<b><h5>Published: </b>' + vacancy.last_publicated + '</h5><br>' +
                             '<b><h5>Parsed: </b>' + vacancy.date_parsing + '</h5><br>' +
                             '<b><h4 style="color:green">' + vacancy.title + '</h4></b><br><b>' + vacancy.employee + '</b><br><br>' + 
@@ -845,3 +871,5 @@ with open(html_file_path, 'w', encoding='utf-8') as file:
     file.write(html_content)
 
 os.startfile(html_file_path)
+
+

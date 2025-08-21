@@ -6,6 +6,9 @@ import sys
 
 TIMESTAMP_FORCURRENTITERATION_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
+DEFAULT_COORDINATES_LATITUDE = 0
+DEFAULT_COORDINATES_LONGITUDE = 0
+
 FOLDERNAME_RESULTS_ALL = "results"
 FOLDERNAME_DAILYDATA = "results_daily"
 

@@ -145,11 +145,14 @@ class PracujPLParser(BaseParser):
 
             address = ", ".join(filter(None, [job_locality, job_street, job_building])) if job_street else display_workplace
 
+            latitude, longitude = settings.DEFAULT_COORDINATES_LATITUDE, settings.DEFAULT_COORDINATES_LONGITUDE
+
             if address:
-                latitude, longitude = bin.logic.nominatim.get_coordinates_latlon_fc(address, settings.NOMINATIM_URL)
+                if job_street:
+                    latitude, longitude = bin.logic.nominatim.get_coordinates_latlon_fc(address, settings.NOMINATIM_URL)
                 self.oDatabase.step04_update_geocoordinatest_fc(latitude, longitude, job_id)
 
-                if latitude and longitude:
+                if latitude != settings.DEFAULT_COORDINATES_LATITUDE and longitude != settings.DEFAULT_COORDINATES_LONGITUDE:
                     self.logger_obj.info(f"Coordinates for job ID {job_id} updated: {latitude}, {longitude}")
                 else:
                     self.logger_obj.warning(f"Failed to get coordinates for job ID {job_id} (address: {address})")

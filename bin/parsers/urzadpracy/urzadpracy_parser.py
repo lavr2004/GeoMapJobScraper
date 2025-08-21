@@ -1,7 +1,7 @@
 import time
 
 import bin.logic.web
-from bin.settings import NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS, NOMINATIM_URL
+from bin.settings import NOMINATIM_PAUSE_IF_PUBLIC_API_SECONDS, NOMINATIM_URL, DEFAULT_COORDINATES_LATITUDE, DEFAULT_COORDINATES_LONGITUDE
 
 from urllib.parse import unquote, urlparse, parse_qs, quote
 
@@ -124,8 +124,8 @@ def fetch_geolocation(job):
 
         if status_code == 200 and data_json:
             calculated_nominatim_data_dc =  {
-                "job_latitude": data_json[0].get("lat") if addresstorequest_unquote else 0,
-                "job_longitude": data_json[0].get("lon") if addresstorequest_unquote else 0,
+                "job_latitude": data_json[0].get("lat") if addresstorequest_unquote else DEFAULT_COORDINATES_LATITUDE,
+                "job_longitude": data_json[0].get("lon") if addresstorequest_unquote else DEFAULT_COORDINATES_LONGITUDE,
                 "job_country": data_json[0]["address"].get("country"),
                 "job_locality": data_json[0]["address"].get("city", data_json[0]["address"].get("town", data_json[0]["address"].get("village"))),
                 "job_street": data_json[0]["address"].get("road"),
